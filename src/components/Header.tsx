@@ -14,13 +14,17 @@ import {
   ExternalLink,
   ShieldCheck,
   Globe,
+  BookOpen,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
 } from 'lucide-react';
 import { ProjectMetadata } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
 interface HeaderProps {
-  activeTab: 'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings';
-  setActiveTab: (tab: 'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings') => void;
+  activeTab: 'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings' | 'manual';
+  setActiveTab: (tab: 'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings' | 'manual') => void;
   metadata: ProjectMetadata;
   canUndo: boolean;
   canRedo: boolean;
@@ -33,6 +37,9 @@ interface HeaderProps {
   onExportJson: () => void;
   onImportJson: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onResetSample: () => void;
+  onCloudSave?: () => void;
+  onCloudLoad?: () => void;
+  isCloudSaving?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,6 +57,9 @@ export const Header: React.FC<HeaderProps> = ({
   onExportJson,
   onImportJson,
   onResetSample,
+  onCloudSave,
+  onCloudLoad,
+  isCloudSaving = false,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { language, setLanguage, toggleLanguage, t } = useLanguage();
@@ -210,6 +220,32 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Upload className="w-3.5 h-3.5" />
             </button>
+
+            {/* Firebase Cloud Sync Controls */}
+            {onCloudSave && (
+              <button
+                onClick={onCloudSave}
+                disabled={isCloudSaving}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded shadow-2xs transition-colors disabled:opacity-50"
+                title={t('cloudSave')}
+              >
+                <CloudUpload className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">
+                  {isCloudSaving ? t('savingToCloud') : t('cloudSave')}
+                </span>
+              </button>
+            )}
+
+            {onCloudLoad && (
+              <button
+                onClick={onCloudLoad}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-colors"
+                title={t('cloudLoad')}
+              >
+                <CloudDownload className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t('cloudLoad')}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -270,6 +306,18 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <span>{t('navSettings')}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('manual')}
+            className={`px-4 flex items-center gap-1.5 border-b-2 transition-all ${
+              activeTab === 'manual'
+                ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
+                : 'border-transparent text-[#003d9b] hover:text-[#0052cc] hover:bg-[#003d9b]/10 bg-[#dae2ff]/40'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-[#003d9b]" />
+            <span>{t('navManual')}</span>
           </button>
         </div>
 

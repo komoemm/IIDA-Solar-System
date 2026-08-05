@@ -16,6 +16,7 @@ export const translations = {
     navBim: 'BIM Drawing Sheet',
     navGallery: 'Reference Gallery',
     navSettings: 'Project Settings',
+    navManual: 'User Manual',
 
     // Top Header Actions
     undo: 'Undo',
@@ -155,6 +156,13 @@ export const translations = {
     cancel: 'Cancel',
     submitAdd: 'Add Component',
 
+    // Cloud Database
+    cloudSave: 'Cloud Save',
+    cloudLoad: 'Cloud Load',
+    savingToCloud: 'Saving to Cloud...',
+    savedToCloud: 'Saved to Firebase Cloud!',
+    cloudError: 'Cloud operation failed.',
+
     // New additions for lint completeness
     legendTitle: 'Connection Legend',
     dcPower: 'DC Power (PV / Battery)',
@@ -195,6 +203,7 @@ export const translations = {
     navBim: 'BIM CAD図面シート',
     navGallery: '参考機器ギャラリー',
     navSettings: 'プロジェクト設定',
+    navManual: '操作マニュアル',
 
     // Top Header Actions
     undo: '元に戻す',
@@ -333,6 +342,13 @@ export const translations = {
     modalCategory: '機器カテゴリーを選択',
     cancel: 'キャンセル',
     submitAdd: 'コンポーネントを追加',
+
+    // Cloud Database
+    cloudSave: 'クラウド保存',
+    cloudLoad: 'クラウド読み込み',
+    savingToCloud: 'クラウドに保存中...',
+    savedToCloud: 'Firebase クラウドに保存しました！',
+    cloudError: 'クラウド処理に失敗しました。',
 
     // New additions for lint completeness
     legendTitle: '結線凡例',

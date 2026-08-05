@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "entities": {
+    "solarDiagram": {
+      "title": "Solar Diagram",
+      "description": "BIM single-line diagrams and system configurations for company solar hybrid projects",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "nodes": { "type": "array" },
+        "connections": { "type": "array" },
+        "metadata": { "type": "object" },
+        "designNotes": { "type": "string" },
+        "updatedAt": { "type": "timestamp" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "examples": [
+        {
+          "title": "IIDA Hybrid Solar 100kW",
+          "nodes": [],
+          "connections": [],
+          "metadata": {
+            "projectTitle": "100kW Solar Hybrid System",
+            "drawingNumber": "DWG-HYBRID-2026-001"
+          },
+          "designNotes": "Standard 100kW hybrid inverter setup",
+          "updatedAt": "2026-08-05T00:00:00Z",
+          "createdAt": "2026-08-05T00:00:00Z"
+        }
+      ]
+    }
+  }
+}
