@@ -20,19 +20,48 @@ import {
 const MAX_HISTORY = 30;
 
 export function useDiagramState() {
-  const [nodes, setNodes] = useState<EquipmentNode[]>(INITIAL_NODES);
-  const [connections, setConnections] = useState<Connection[]>(INITIAL_CONNECTIONS);
-  const [metadata, setMetadata] = useState<ProjectMetadata>(DEFAULT_METADATA);
-  const [designNotes, setDesignNotes] = useState<string>(INITIAL_DESIGN_NOTES);
+  // Load initial state from localStorage if available, otherwise preset data
+  const getInitialState = () => {
+    try {
+      const saved = localStorage.getItem('solar_bim_diagram_state_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.nodes && parsed.connections) {
+          return {
+            nodes: parsed.nodes,
+            connections: parsed.connections,
+            metadata: parsed.metadata || DEFAULT_METADATA,
+            designNotes: parsed.designNotes || INITIAL_DESIGN_NOTES,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Could not parse saved local storage state:', e);
+    }
+    return {
+      nodes: INITIAL_NODES,
+      connections: INITIAL_CONNECTIONS,
+      metadata: DEFAULT_METADATA,
+      designNotes: INITIAL_DESIGN_NOTES,
+    };
+  };
 
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('INV-01');
+  const initialState = getInitialState();
+  const [nodes, setNodes] = useState<EquipmentNode[]>(initialState.nodes);
+  const [connections, setConnections] = useState<Connection[]>(initialState.connections);
+  const [metadata, setMetadata] = useState<ProjectMetadata>(initialState.metadata);
+  const [designNotes, setDesignNotes] = useState<string>(initialState.designNotes);
+
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
+    initialState.nodes[0]?.id || 'INV-01'
+  );
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
   // Undo / Redo History Stacks
   const historyRef = useRef<DiagramState[]>([]);
   const pointerRef = useRef<number>(-1);
 
-  // Push state to history
+  // Push state to history and persist to localStorage
   const saveStateToHistory = useCallback(
     (newNodes: EquipmentNode[], newConns: Connection[], newMeta: ProjectMetadata, newNotes: string) => {
       const currentState: DiagramState = {
@@ -41,6 +70,13 @@ export function useDiagramState() {
         metadata: newMeta,
         designNotes: newNotes,
       };
+
+      // Persist to local storage
+      try {
+        localStorage.setItem('solar_bim_diagram_state_v1', JSON.stringify(currentState));
+      } catch (e) {
+        console.warn('Failed to save state to localStorage:', e);
+      }
 
       // Truncate future history if we are in middle of stack
       const history = historyRef.current.slice(0, pointerRef.current + 1);
@@ -58,7 +94,7 @@ export function useDiagramState() {
 
   // Initialize history on first load
   if (pointerRef.current === -1) {
-    saveStateToHistory(INITIAL_NODES, INITIAL_CONNECTIONS, DEFAULT_METADATA, INITIAL_DESIGN_NOTES);
+    saveStateToHistory(initialState.nodes, initialState.connections, initialState.metadata, initialState.designNotes);
   }
 
   const undo = useCallback(() => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Image as ImageIcon, Upload } from 'lucide-react';
 import { EquipmentType } from '../types';
 import { LIBRARY_ITEMS, EQUIPMENT_IMAGES } from '../data/presetData';
 import { useLanguage } from '../context/LanguageContext';
@@ -46,6 +46,20 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
       setManufacturer(preset.defaultManufacturer);
       setModel(preset.defaultModel);
       setImageUrl(preset.imageUrl || EQUIPMENT_IMAGES[type]);
+    }
+  };
+
+  const handleModalFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const result = evt.target?.result as string;
+        if (result) {
+          setImageUrl(result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -191,14 +205,26 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-              {t('refPhotoUrl')}
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[11px] font-semibold text-[#434654]">
+                {t('refPhotoUrl')}
+              </label>
+              <label className="cursor-pointer text-[10px] text-[#003d9b] font-bold bg-[#dae2ff] hover:bg-[#b9cde5] px-2 py-0.5 rounded flex items-center gap-1 transition-colors">
+                <Upload className="w-3 h-3" />
+                <span>Upload File</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleModalFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
             <input
               type="text"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
+              placeholder="https://images.unsplash.com/... or paste image URL"
               className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
             />
           </div>
