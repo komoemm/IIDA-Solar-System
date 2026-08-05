@@ -163,6 +163,13 @@ export const translations = {
     savedToCloud: 'Saved to Firebase Cloud!',
     cloudError: 'Cloud operation failed.',
 
+    // Panel Visibility Toggles
+    togglePalette: 'Equipment Library',
+    toggleProperties: 'Component Specs',
+    toggleBottomPanel: 'Legend & Notes',
+    focusCanvas: 'Focus Canvas View',
+    showAllPanels: 'Show All Panels',
+
     // New additions for lint completeness
     legendTitle: 'Connection Legend',
     dcPower: 'DC Power (PV / Battery)',
@@ -349,6 +356,13 @@ export const translations = {
     savingToCloud: 'クラウドに保存中...',
     savedToCloud: 'Firebase クラウドに保存しました！',
     cloudError: 'クラウド処理に失敗しました。',
+
+    // Panel Visibility Toggles
+    togglePalette: '機器ライブラリ',
+    toggleProperties: 'コンポーネント仕様',
+    toggleBottomPanel: '結線凡例 & 設計ノート',
+    focusCanvas: 'キャンバス集中モード',
+    showAllPanels: '全パネル表示',
 
     // New additions for lint completeness
     legendTitle: '結線凡例',

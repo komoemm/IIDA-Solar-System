@@ -1,21 +1,11 @@
 import React from 'react';
 import {
   Sun,
-  Download,
-  Upload,
   RotateCcw,
   RotateCw,
-  Plus,
   Layout,
-  Share2,
-  FileCode,
-  Image as ImageIcon,
-  CheckCircle2,
-  ExternalLink,
-  ShieldCheck,
   Globe,
   BookOpen,
-  Cloud,
   CloudUpload,
   CloudDownload,
 } from 'lucide-react';
@@ -31,12 +21,12 @@ interface HeaderProps {
   onUndo: () => void;
   onRedo: () => void;
   onAutoLayout: () => void;
-  onOpenAddModal: () => void;
-  onExportPng: () => void;
-  onExportSvg: () => void;
-  onExportJson: () => void;
-  onImportJson: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onResetSample: () => void;
+  onOpenAddModal?: () => void;
+  onExportPng?: () => void;
+  onExportSvg?: () => void;
+  onExportJson?: () => void;
+  onImportJson?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onResetSample?: () => void;
   onCloudSave?: () => void;
   onCloudLoad?: () => void;
   isCloudSaving?: boolean;
@@ -61,8 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   onCloudLoad,
   isCloudSaving = false,
 }) => {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const { language, setLanguage, toggleLanguage, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <header className="fixed top-0 left-0 w-full z-40 bg-[#ffffff] border-b border-[#c3c6d6] shadow-sm font-sans">
@@ -82,171 +71,90 @@ export const Header: React.FC<HeaderProps> = ({
                 {metadata.drawingNumber}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#434654]">
+            <div className="text-xs text-[#434654]">
               <span className="font-bold text-[#003d9b]">{metadata.clientName}</span>
-              <span>•</span>
-              <a
-                href="https://www.iida-imm.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="text-[#003d9b] hover:underline inline-flex items-center gap-1 font-mono text-[11px]"
-              >
-                <span>www.iida-imm.com</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
             </div>
           </div>
         </div>
 
         {/* Global Action Tools */}
-        <div className="flex items-center gap-2">
-          {/* Language Switcher Badge */}
-          <div className="flex items-center border border-[#a6c8ff] rounded-full bg-[#dae2ff]/30 p-0.5 mr-1 shadow-2xs">
-            <button
-              onClick={() => setLanguage('en')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-full transition-all flex items-center gap-1 ${
-                language === 'en'
-                  ? 'bg-[#003d9b] text-white shadow-xs'
-                  : 'text-[#003d9b] hover:bg-[#dae2ff]/60'
-              }`}
-              title="Switch language to English"
-            >
-              <span>🇺🇸</span>
-              <span>EN</span>
-            </button>
-            <button
-              onClick={() => setLanguage('ja')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-full transition-all flex items-center gap-1 ${
-                language === 'ja'
-                  ? 'bg-[#003d9b] text-white shadow-xs'
-                  : 'text-[#003d9b] hover:bg-[#dae2ff]/60'
-              }`}
-              title="日本語に言語を切り替えます"
-            >
-              <span>🇯🇵</span>
-              <span>日本語</span>
-            </button>
-          </div>
+        <div className="flex items-center gap-1.5">
+          {/* Language Switcher Button */}
+          <button
+            onClick={() => setLanguage(language === 'en' ? 'ja' : 'en')}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-all shadow-2xs"
+            title={language === 'en' ? 'Switch to Japanese (日本語)' : 'Switch to English'}
+          >
+            <Globe className="w-3.5 h-3.5 text-[#003d9b]" />
+            <span className="font-mono text-[11px] uppercase">
+              {language === 'en' ? 'EN' : 'JP'}
+            </span>
+          </button>
 
           {/* Undo/Redo */}
           <div className="flex items-center border border-[#c3c6d6] rounded bg-[#f1f4f8] overflow-hidden">
             <button
               onClick={onUndo}
               disabled={!canUndo}
-              className={`p-2 transition-colors ${
+              className={`p-1.5 transition-colors ${
                 canUndo
                   ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
                   : 'text-[#737685] opacity-40 cursor-not-allowed'
               }`}
               title={t('undo')}
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
-            <div className="w-[1px] h-5 bg-[#c3c6d6]" />
+            <div className="w-[1px] h-4 bg-[#c3c6d6]" />
             <button
               onClick={onRedo}
               disabled={!canRedo}
-              className={`p-2 transition-colors ${
+              className={`p-1.5 transition-colors ${
                 canRedo
                   ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
                   : 'text-[#737685] opacity-40 cursor-not-allowed'
               }`}
               title={t('redo')}
             >
-              <RotateCw className="w-4 h-4" />
+              <RotateCw className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Auto Layout */}
           <button
             onClick={onAutoLayout}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#434654] bg-[#f1f4f8] hover:bg-[#e0e3e7] border border-[#c3c6d6] rounded transition-colors"
+            className="p-1.5 text-[#434654] hover:text-[#003d9b] bg-[#f1f4f8] hover:bg-[#e0e3e7] border border-[#c3c6d6] rounded transition-colors flex items-center gap-1 text-xs font-semibold"
             title={t('autoLayout')}
           >
             <Layout className="w-3.5 h-3.5 text-[#003d9b]" />
-            <span className="hidden sm:inline">{t('autoLayout')}</span>
+            <span className="hidden md:inline">{t('autoLayout')}</span>
           </button>
 
-          {/* Add Equipment */}
-          <button
-            onClick={onOpenAddModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded shadow-xs transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('addEquipment')}</span>
-          </button>
-
-          {/* Export Dropdown / Buttons */}
-          <div className="flex items-center gap-1">
+          {/* Firebase Cloud Sync Controls */}
+          {onCloudSave && (
             <button
-              onClick={onExportPng}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title={t('exportPng')}
+              onClick={onCloudSave}
+              disabled={isCloudSaving}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded shadow-2xs transition-colors disabled:opacity-50"
+              title={t('cloudSave')}
             >
-              <ImageIcon className="w-3.5 h-3.5 text-[#003d9b]" />
-              <span className="hidden md:inline">PNG</span>
+              <CloudUpload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">
+                {isCloudSaving ? t('savingToCloud') : t('cloudSave')}
+              </span>
             </button>
+          )}
 
+          {onCloudLoad && (
             <button
-              onClick={onExportSvg}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title={t('exportSvg')}
+              onClick={onCloudLoad}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-colors"
+              title={t('cloudLoad')}
             >
-              <FileCode className="w-3.5 h-3.5 text-[#285ab9]" />
-              <span className="hidden md:inline">SVG</span>
+              <CloudDownload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{t('cloudLoad')}</span>
             </button>
-
-            <button
-              onClick={onExportJson}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title={t('exportJson')}
-            >
-              <Download className="w-3.5 h-3.5 text-[#004483]" />
-              <span className="hidden lg:inline">JSON</span>
-            </button>
-
-            {/* Import JSON hidden input */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={onImportJson}
-              accept=".json"
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-1.5 text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title={t('importJson')}
-            >
-              <Upload className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Firebase Cloud Sync Controls */}
-            {onCloudSave && (
-              <button
-                onClick={onCloudSave}
-                disabled={isCloudSaving}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded shadow-2xs transition-colors disabled:opacity-50"
-                title={t('cloudSave')}
-              >
-                <CloudUpload className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">
-                  {isCloudSaving ? t('savingToCloud') : t('cloudSave')}
-                </span>
-              </button>
-            )}
-
-            {onCloudLoad && (
-              <button
-                onClick={onCloudLoad}
-                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-colors"
-                title={t('cloudLoad')}
-              >
-                <CloudDownload className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{t('cloudLoad')}</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -318,29 +226,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <BookOpen className="w-3.5 h-3.5 text-[#003d9b]" />
             <span>{t('navManual')}</span>
-          </button>
-        </div>
-
-        <div className="ml-auto flex items-center gap-3">
-          <a
-            href="https://www.iida-imm.com/"
-            target="_blank"
-            rel="noreferrer"
-            className="hidden xl:inline-flex items-center gap-1.5 text-[11px] text-[#003d9b] font-mono bg-[#dae2ff]/50 hover:bg-[#dae2ff] px-2.5 py-0.5 rounded border border-[#a6c8ff] font-semibold transition-colors"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#003d9b]" />
-            <span>{t('reservedBadge')}</span>
-          </a>
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-[#059669] font-mono bg-[#ecfdf5] px-2 py-0.5 rounded border border-[#a7f3d0]">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>{t('necCompliant')}</span>
-          </span>
-          <button
-            onClick={onResetSample}
-            className="text-[10px] text-[#737685] hover:text-[#003d9b] underline font-mono"
-            title="Reset diagram to initial hybrid solar preset"
-          >
-            {t('resetDemo')}
           </button>
         </div>
       </nav>

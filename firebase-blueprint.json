@@ -11,6 +11,7 @@
         "connections": { "type": "array" },
         "metadata": { "type": "object" },
         "designNotes": { "type": "string" },
+        "commitRemark": { "type": "string" },
         "updatedAt": { "type": "timestamp" },
         "createdAt": { "type": "timestamp" }
       },

@@ -18,6 +18,12 @@ import {
   Flame,
   Cpu,
   Trash2,
+  X,
+  PanelLeft,
+  PanelRight,
+  Sliders,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import {
   EquipmentNode,
@@ -50,6 +56,16 @@ interface DiagramCanvasProps {
   onAddEquipmentFromDrop: (type: EquipmentType, x: number, y: number) => void;
   designNotes: string;
   onChangeDesignNotes: (notes: string) => void;
+
+  // Panel Toggles
+  showPalette?: boolean;
+  onTogglePalette?: () => void;
+  showProperties?: boolean;
+  onToggleProperties?: () => void;
+  showBottomPanel?: boolean;
+  onToggleBottomPanel?: () => void;
+  isFocusCanvasMode?: boolean;
+  onToggleFocusCanvasMode?: () => void;
 }
 
 export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
@@ -67,6 +83,14 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   onAddEquipmentFromDrop,
   designNotes,
   onChangeDesignNotes,
+  showPalette = true,
+  onTogglePalette,
+  showProperties = true,
+  onToggleProperties,
+  showBottomPanel = true,
+  onToggleBottomPanel,
+  isFocusCanvasMode = false,
+  onToggleFocusCanvasMode,
 }) => {
   const { language, t } = useLanguage();
   // Canvas Viewport Transforms
@@ -346,6 +370,71 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           >
             {animateFlow ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
           </button>
+
+          <div className="w-[1px] h-5 bg-[#c3c6d6] my-auto mx-1" />
+
+          {/* Panel Visibility Controls */}
+          {onTogglePalette && (
+            <button
+              onClick={onTogglePalette}
+              className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-semibold ${
+                showPalette
+                  ? 'bg-[#003d9b] text-white'
+                  : 'text-[#737685] hover:bg-[#f1f4f8]'
+              }`}
+              title={t('togglePalette')}
+            >
+              <PanelLeft className="w-4 h-4" />
+              <span className="hidden lg:inline">{t('togglePalette')}</span>
+            </button>
+          )}
+
+          {onToggleBottomPanel && (
+            <button
+              onClick={onToggleBottomPanel}
+              className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-semibold ${
+                showBottomPanel
+                  ? 'bg-[#003d9b] text-white'
+                  : 'text-[#737685] hover:bg-[#f1f4f8]'
+              }`}
+              title={t('toggleBottomPanel')}
+            >
+              <Sliders className="w-4 h-4" />
+              <span className="hidden lg:inline">{t('toggleBottomPanel')}</span>
+            </button>
+          )}
+
+          {onToggleProperties && (
+            <button
+              onClick={onToggleProperties}
+              className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-semibold ${
+                showProperties
+                  ? 'bg-[#003d9b] text-white'
+                  : 'text-[#737685] hover:bg-[#f1f4f8]'
+              }`}
+              title={t('toggleProperties')}
+            >
+              <PanelRight className="w-4 h-4" />
+              <span className="hidden lg:inline">{t('toggleProperties')}</span>
+            </button>
+          )}
+
+          {onToggleFocusCanvasMode && (
+            <button
+              onClick={onToggleFocusCanvasMode}
+              className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-bold ${
+                isFocusCanvasMode
+                  ? 'bg-[#181c1f] text-white shadow-xs'
+                  : 'bg-[#dae2ff] text-[#003d9b] hover:bg-[#b9cde5]'
+              }`}
+              title={isFocusCanvasMode ? t('showAllPanels') : t('focusCanvas')}
+            >
+              {isFocusCanvasMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              <span className="hidden sm:inline">
+                {isFocusCanvasMode ? t('showAllPanels') : t('focusCanvas')}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Right Zoom Control Group */}
@@ -709,48 +798,61 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       </div>
 
       {/* Bottom Panel: Legend & Design Notes */}
-      <div className="h-40 border-t border-[#c3c6d6] bg-[#ffffff] shrink-0 flex divide-x divide-[#ebeef2] text-xs">
-        {/* Connection Legend */}
-        <div className="w-64 p-3 flex flex-col justify-between">
-          <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f] mb-1">
-            {t('legendTitle')}
-          </span>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-[3px] bg-[#0052cc] rounded-full" />
-              <span className="text-xs text-[#434654]">{t('dcPower')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-[3px] bg-[#334155] rounded-full" />
-              <span className="text-xs text-[#434654]">{t('acPower')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-[2px] bg-[#ea580c] border-b border-dashed border-[#ea580c]" />
-              <span className="text-xs text-[#434654]">{t('commsLine')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-[2px] bg-[#16a34a] border-b border-dashed border-[#16a34a]" />
-              <span className="text-xs text-[#434654]">{t('groundLine')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Engineering Design Notes */}
-        <div className="flex-1 p-3 flex flex-col">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
-              {t('engineeringNotes')}
+      {showBottomPanel && (
+        <div className="h-40 border-t border-[#c3c6d6] bg-[#ffffff] shrink-0 flex divide-x divide-[#ebeef2] text-xs relative">
+          {/* Connection Legend */}
+          <div className="w-64 p-3 flex flex-col justify-between">
+            <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f] mb-1">
+              {t('legendTitle')}
             </span>
-            <span className="text-[10px] text-[#737685] font-mono">Autosaved</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-[3px] bg-[#0052cc] rounded-full" />
+                <span className="text-xs text-[#434654]">{t('dcPower')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-[3px] bg-[#334155] rounded-full" />
+                <span className="text-xs text-[#434654]">{t('acPower')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-[2px] bg-[#ea580c] border-b border-dashed border-[#ea580c]" />
+                <span className="text-xs text-[#434654]">{t('commsLine')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-[2px] bg-[#16a34a] border-b border-dashed border-[#16a34a]" />
+                <span className="text-xs text-[#434654]">{t('groundLine')}</span>
+              </div>
+            </div>
           </div>
-          <textarea
-            value={designNotes}
-            onChange={(e) => onChangeDesignNotes(e.target.value)}
-            className="flex-1 w-full bg-[#f8fafc] border border-[#c3c6d6] rounded p-2 font-mono text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] resize-none"
-            placeholder="Type notes..."
-          />
+
+          {/* Engineering Design Notes */}
+          <div className="flex-1 p-3 flex flex-col relative">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
+                {t('engineeringNotes')}
+              </span>
+              <div className="flex items-center gap-3 pr-6">
+                <span className="text-[10px] text-[#737685] font-mono">Autosaved</span>
+              </div>
+            </div>
+            <textarea
+              value={designNotes}
+              onChange={(e) => onChangeDesignNotes(e.target.value)}
+              className="flex-1 w-full bg-[#f8fafc] border border-[#c3c6d6] rounded p-2 font-mono text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] resize-none"
+              placeholder="Type notes..."
+            />
+            {onToggleBottomPanel && (
+              <button
+                onClick={onToggleBottomPanel}
+                className="absolute top-2.5 right-2.5 text-[#737685] hover:text-[#181c1f] hover:bg-[#e0e3e7] p-1 rounded transition-colors"
+                title="Hide Legend & Notes Panel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

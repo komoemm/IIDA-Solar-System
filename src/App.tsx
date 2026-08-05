@@ -12,7 +12,7 @@ import { ReferenceGallery } from './components/ReferenceGallery';
 import { ProjectSettings } from './components/ProjectSettings';
 import { UserManual } from './components/UserManual';
 import { EquipmentModal } from './components/EquipmentModal';
-import { Cloud, CheckCircle2, X, Clock, Sun, Database } from 'lucide-react';
+import { Cloud, CheckCircle2, X, Clock, Sun, Database, GitCommit, Calendar, MessageSquare, Tag, Save, ArrowRight } from 'lucide-react';
 import {
   exportElementToPng,
   exportDiagramToSvg,
@@ -58,30 +58,72 @@ export default function App() {
 
   const [isCloudSaving, setIsCloudSaving] = useState(false);
   const [cloudNotice, setCloudNotice] = useState<string | null>(null);
+  const [isCloudSaveModalOpen, setIsCloudSaveModalOpen] = useState(false);
+  const [saveRemark, setSaveRemark] = useState('');
   const [isCloudLoadModalOpen, setIsCloudLoadModalOpen] = useState(false);
   const [cloudProjects, setCloudProjects] = useState<any[]>([]);
   const [isLoadingCloudProjects, setIsLoadingCloudProjects] = useState(false);
 
-  // Firebase Cloud Operations
-  const handleCloudSave = async () => {
+  // Canvas Panel Visibility State
+  const [showPalette, setShowPalette] = useState(true);
+  const [showProperties, setShowProperties] = useState(true);
+  const [showBottomPanel, setShowBottomPanel] = useState(true);
+
+  const isFocusCanvasMode = !showPalette && !showProperties && !showBottomPanel;
+
+  const handleToggleFocusCanvasMode = () => {
+    if (isFocusCanvasMode) {
+      setShowPalette(true);
+      setShowProperties(true);
+      setShowBottomPanel(true);
+    } else {
+      setShowPalette(false);
+      setShowProperties(false);
+      setShowBottomPanel(false);
+    }
+  };
+
+  // Trigger Save Modal
+  const handleOpenCloudSaveModal = () => {
+    setSaveRemark('');
+    setIsCloudSaveModalOpen(true);
+  };
+
+  // Submit Cloud Save with Commit Remark & Formatted Timestamp
+  const handleCloudSaveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       setIsCloudSaving(true);
+      const now = new Date();
+      const formattedDate = now.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+
       const diagramData = {
         title: metadata.projectTitle || 'Solar Hybrid System SLD',
         nodes,
         connections,
         metadata,
         designNotes,
+        commitRemark: saveRemark.trim() || 'Updated SLD Diagram configuration',
+        formattedTimestamp: formattedDate,
         updatedAt: serverTimestamp(),
-        createdAt: new Date().toISOString(),
+        createdAt: now.toISOString(),
       };
+
       await addDoc(collection(db, 'solarDiagrams'), diagramData);
-      setCloudNotice('Successfully saved diagram to Firebase Cloud Database!');
-      setTimeout(() => setCloudNotice(null), 4000);
+      setCloudNotice(`Saved Snapshot to Cloud! (${formattedDate})`);
+      setIsCloudSaveModalOpen(false);
+      setTimeout(() => setCloudNotice(null), 5000);
     } catch (err) {
       console.error('Firebase cloud save error:', err);
-      setCloudNotice('Cloud save failed. Check internet connection.');
-      setTimeout(() => setCloudNotice(null), 4000);
+      setCloudNotice('Cloud save failed. Please try again.');
+      setTimeout(() => setCloudNotice(null), 5000);
     } finally {
       setIsCloudSaving(false);
     }
@@ -91,7 +133,7 @@ export default function App() {
     setIsCloudLoadModalOpen(true);
     setIsLoadingCloudProjects(true);
     try {
-      const q = query(collection(db, 'solarDiagrams'), orderBy('updatedAt', 'desc'), limit(20));
+      const q = query(collection(db, 'solarDiagrams'), orderBy('createdAt', 'desc'), limit(25));
       const snapshot = await getDocs(q);
       const list: any[] = [];
       snapshot.forEach((doc) => {
@@ -203,7 +245,7 @@ export default function App() {
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
         onResetSample={resetToDefault}
-        onCloudSave={handleCloudSave}
+        onCloudSave={handleOpenCloudSaveModal}
         onCloudLoad={handleCloudLoadModalOpen}
         isCloudSaving={isCloudSaving}
       />
@@ -228,11 +270,14 @@ export default function App() {
         {activeTab === 'canvas' && (
           <div className="flex-1 flex w-full h-full overflow-hidden">
             {/* Left Equipment Palette */}
-            <EquipmentPalette
-              onAddEquipment={(type) => {
-                addNode(type);
-              }}
-            />
+            {showPalette && (
+              <EquipmentPalette
+                onAddEquipment={(type) => {
+                  addNode(type);
+                }}
+                onClose={() => setShowPalette(false)}
+              />
+            )}
 
             {/* Central Interactive Schematic Board */}
             <DiagramCanvas
@@ -240,7 +285,10 @@ export default function App() {
               connections={connections}
               selectedNodeId={selectedNodeId}
               selectedConnectionId={selectedConnectionId}
-              onSelectNode={setSelectedNodeId}
+              onSelectNode={(id) => {
+                setSelectedNodeId(id);
+                if (id) setShowProperties(true);
+              }}
               onSelectConnection={setSelectedConnectionId}
               onMoveNode={moveNode}
               onFinalizeMoveNode={finalizeMoveNode}
@@ -252,18 +300,31 @@ export default function App() {
               }}
               designNotes={designNotes}
               onChangeDesignNotes={updateDesignNotes}
+              showPalette={showPalette}
+              onTogglePalette={() => setShowPalette(!showPalette)}
+              showProperties={showProperties}
+              onToggleProperties={() => setShowProperties(!showProperties)}
+              showBottomPanel={showBottomPanel}
+              onToggleBottomPanel={() => setShowBottomPanel(!showBottomPanel)}
+              isFocusCanvasMode={isFocusCanvasMode}
+              onToggleFocusCanvasMode={handleToggleFocusCanvasMode}
             />
 
             {/* Right Properties Side Panel */}
-            <PropertiesPanel
-              node={selectedNode}
-              connections={connections}
-              allNodes={nodes}
-              onUpdateNode={updateNode}
-              onDeleteNode={deleteNode}
-              onDeleteConnection={deleteConnection}
-              onClose={() => setSelectedNodeId(null)}
-            />
+            {showProperties && (
+              <PropertiesPanel
+                node={selectedNode}
+                connections={connections}
+                allNodes={nodes}
+                onUpdateNode={updateNode}
+                onDeleteNode={deleteNode}
+                onDeleteConnection={deleteConnection}
+                onClose={() => {
+                  setSelectedNodeId(null);
+                  setShowProperties(false);
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -324,16 +385,96 @@ export default function App() {
         onAdd={handleAddEquipmentFromModal}
       />
 
+      {/* Cloud Save Version Modal */}
+      {isCloudSaveModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-[#c3c6d6] w-full max-w-md overflow-hidden animate-fade-in font-sans">
+            <div className="bg-[#003d9b] text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GitCommit className="w-5 h-5 text-[#a6c8ff]" />
+                <h2 className="font-bold text-sm uppercase tracking-wider">
+                  Save Diagram Version to Cloud
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsCloudSaveModalOpen(false)}
+                className="text-white/70 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCloudSaveSubmit} className="p-4 space-y-4">
+              <div className="bg-[#f8fafc] p-3 rounded border border-[#c3c6d6] text-xs text-[#434654] space-y-1 font-mono">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-[#181c1f]">Project:</span>
+                  <span>{metadata.projectTitle || 'Solar Hybrid System'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-[#181c1f]">Drawing No:</span>
+                  <span>{metadata.drawingNumber || 'DWG-001'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-[#181c1f]">Component Stats:</span>
+                  <span>{nodes.length} Nodes | {connections.length} Wires</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#181c1f] mb-1.5 flex items-center gap-1">
+                  <MessageSquare className="w-3.5 h-3.5 text-[#003d9b]" />
+                  <span>Version / Update Remark (Commit Note):</span>
+                </label>
+                <textarea
+                  value={saveRemark}
+                  onChange={(e) => setSaveRemark(e.target.value)}
+                  placeholder="e.g., Added 100kW hybrid inverter, connected BESS battery bank and adjusted PV string wiring..."
+                  rows={3}
+                  className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded p-2.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] shadow-2xs"
+                  required
+                />
+                <p className="text-[11px] text-[#737685] mt-1">
+                  This version note and timestamp will be stored permanently in Firebase Cloud Firestore.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#ebeef2]">
+                <button
+                  type="button"
+                  onClick={() => setIsCloudSaveModalOpen(false)}
+                  className="px-4 py-2 bg-[#ffffff] hover:bg-[#e0e3e7] text-[#434654] font-bold text-xs border border-[#c3c6d6] rounded transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCloudSaving}
+                  className="px-5 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isCloudSaving ? 'Saving to Cloud...' : 'Commit to Cloud'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Cloud Projects Load Modal */}
       {isCloudLoadModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-[#c3c6d6] w-full max-w-lg overflow-hidden animate-fade-in font-sans">
+          <div className="bg-white rounded-lg shadow-xl border border-[#c3c6d6] w-full max-w-xl overflow-hidden animate-fade-in font-sans">
             <div className="bg-[#181c1f] text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Database className="w-5 h-5 text-[#a6c8ff]" />
-                <h2 className="font-bold text-sm uppercase tracking-wider">
-                  Firebase Cloud Projects Database
-                </h2>
+                <div>
+                  <h2 className="font-bold text-sm uppercase tracking-wider">
+                    Firebase Cloud Database - Saved Versions
+                  </h2>
+                  <p className="text-[11px] text-[#a6c8ff] font-normal">
+                    Select a previous diagram snapshot and restore state with full history log
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setIsCloudLoadModalOpen(false)}
@@ -343,41 +484,96 @@ export default function App() {
               </button>
             </div>
 
-            <div className="p-4 max-h-96 overflow-y-auto space-y-2">
+            <div className="p-4 max-h-[28rem] overflow-y-auto space-y-3">
               {isLoadingCloudProjects ? (
-                <div className="text-center py-8 text-xs text-[#737685]">
-                  <p>Loading projects from Firebase Firestore...</p>
+                <div className="text-center py-10 text-xs text-[#737685] space-y-2">
+                  <div className="w-6 h-6 border-2 border-[#003d9b] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p>Fetching saved version logs from Firebase Cloud Database...</p>
                 </div>
               ) : cloudProjects.length === 0 ? (
                 <div className="text-center py-8 text-xs text-[#737685]">
-                  <p>No saved projects found in Firebase Cloud Database yet.</p>
+                  <p>No saved version logs found in Firebase Cloud Database yet.</p>
                   <p className="mt-1 text-[11px] text-[#003d9b]">
-                    Click "Cloud Save" in the top bar to save your current SLD diagram.
+                    Click "Cloud Save" in the top bar to commit your first diagram version.
                   </p>
                 </div>
               ) : (
-                cloudProjects.map((proj) => (
-                  <div
-                    key={proj.id}
-                    onClick={() => handleSelectCloudProject(proj)}
-                    className="p-3 bg-[#f8fafc] hover:bg-[#dae2ff]/40 border border-[#c3c6d6] hover:border-[#003d9b] rounded cursor-pointer transition-all flex items-center justify-between"
-                  >
-                    <div>
-                      <h3 className="font-bold text-xs text-[#181c1f]">
-                        {proj.title || 'Untitled Solar Hybrid Project'}
-                      </h3>
-                      <div className="flex items-center gap-3 text-[11px] text-[#737685] mt-1 font-mono">
-                        <span>DWG: {proj.metadata?.drawingNumber || 'DWG-001'}</span>
-                        <span>
-                          Nodes: {proj.nodes?.length || 0} | Wires: {proj.connections?.length || 0}
-                        </span>
+                cloudProjects.map((proj) => {
+                  const formatDate = () => {
+                    if (proj.formattedTimestamp) return proj.formattedTimestamp;
+                    if (proj.createdAt) {
+                      try {
+                        return new Date(proj.createdAt).toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        });
+                      } catch (e) {}
+                    }
+                    if (proj.updatedAt?.seconds) {
+                      try {
+                        return new Date(proj.updatedAt.seconds * 1000).toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        });
+                      } catch (e) {}
+                    }
+                    return 'Saved Version';
+                  };
+
+                  return (
+                    <div
+                      key={proj.id}
+                      onClick={() => handleSelectCloudProject(proj)}
+                      className="p-3.5 bg-[#f8fafc] hover:bg-[#dae2ff]/30 border border-[#c3c6d6] hover:border-[#003d9b] rounded-md cursor-pointer transition-all space-y-2 group shadow-2xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-xs text-[#181c1f]">
+                              {proj.title || 'Solar Hybrid System'}
+                            </h3>
+                            <span className="text-[10px] font-mono px-2 py-0.5 bg-[#dae2ff] text-[#003d9b] rounded font-bold">
+                              {proj.metadata?.drawingNumber || 'DWG-001'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[11px] text-[#003d9b] font-semibold mt-1">
+                            <Clock className="w-3.5 h-3.5 text-[#003d9b] shrink-0" />
+                            <span>{formatDate()}</span>
+                          </div>
+                        </div>
+
+                        <button className="px-3 py-1.5 bg-[#003d9b] group-hover:bg-[#0052cc] text-white text-xs font-bold rounded transition-colors flex items-center gap-1 shrink-0">
+                          <span>Restore</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Remark / Commit Note Box */}
+                      {proj.commitRemark && (
+                        <div className="p-2 bg-[#ffffff] rounded border border-[#c3c6d6] text-xs text-[#181c1f] flex items-start gap-1.5">
+                          <GitCommit className="w-3.5 h-3.5 text-[#003d9b] shrink-0 mt-0.5" />
+                          <span className="font-medium">
+                            <strong className="text-[#003d9b] mr-1">Note:</strong>
+                            {proj.commitRemark}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-4 text-[11px] text-[#737685] font-mono pt-1 border-t border-[#ebeef2]">
+                        <span>Nodes: {proj.nodes?.length || 0}</span>
+                        <span>Wires: {proj.connections?.length || 0}</span>
+                        <span>Client: {proj.metadata?.clientName || 'IIDA ELECTRONICS'}</span>
                       </div>
                     </div>
-                    <button className="px-3 py-1 bg-[#003d9b] hover:bg-[#0052cc] text-white text-xs font-bold rounded transition-colors">
-                      Load
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -386,7 +582,7 @@ export default function App() {
                 onClick={() => setIsCloudLoadModalOpen(false)}
                 className="px-4 py-1.5 bg-[#ffffff] hover:bg-[#e0e3e7] text-[#434654] font-bold text-xs border border-[#c3c6d6] rounded transition-colors"
               >
-                Cancel
+                Close
               </button>
             </div>
           </div>

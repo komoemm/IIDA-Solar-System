@@ -12,6 +12,7 @@ import {
   Search,
   Plus,
   GripVertical,
+  X,
 } from 'lucide-react';
 import { LIBRARY_ITEMS } from '../data/presetData';
 import { EquipmentType, EquipmentLibraryItem } from '../types';
@@ -19,9 +20,10 @@ import { useLanguage } from '../context/LanguageContext';
 
 interface EquipmentPaletteProps {
   onAddEquipment: (type: EquipmentType) => void;
+  onClose?: () => void;
 }
 
-export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipment }) => {
+export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipment, onClose }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const { language, t } = useLanguage();
@@ -113,9 +115,20 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
         <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
           {t('libraryTitle')}
         </span>
-        <span className="text-[10px] font-mono font-semibold text-[#434654] bg-[#e0e3e7] px-1.5 py-0.5 rounded">
-          {filteredItems.length} {t('itemsCount')}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono font-semibold text-[#434654] bg-[#e0e3e7] px-1.5 py-0.5 rounded">
+            {filteredItems.length} {t('itemsCount')}
+          </span>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-[#737685] hover:text-[#181c1f] hover:bg-[#e0e3e7] p-1 rounded transition-colors"
+              title="Hide Equipment Library"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search Input */}
