@@ -64,10 +64,10 @@ export default function App() {
   const [cloudProjects, setCloudProjects] = useState<any[]>([]);
   const [isLoadingCloudProjects, setIsLoadingCloudProjects] = useState(false);
 
-  // Canvas Panel Visibility State
-  const [showPalette, setShowPalette] = useState(true);
-  const [showProperties, setShowProperties] = useState(true);
-  const [showBottomPanel, setShowBottomPanel] = useState(true);
+  // Canvas Panel Visibility State - Default to Focus Canvas View (all hidden)
+  const [showPalette, setShowPalette] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
+  const [showBottomPanel, setShowBottomPanel] = useState(false);
 
   const isFocusCanvasMode = !showPalette && !showProperties && !showBottomPanel;
 

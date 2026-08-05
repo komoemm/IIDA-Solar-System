@@ -11,7 +11,6 @@ import {
   MapPin,
   Tag,
   Zap,
-  Upload,
 } from 'lucide-react';
 import { EquipmentNode, Connection, PortId } from '../types';
 import { EQUIPMENT_IMAGES, EQUIPMENT_PORTS } from '../data/presetData';
@@ -68,20 +67,6 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     setCustomImageUrl(newUrl);
     setImageError(false);
     onUpdateNode(node.id, { imageUrl: newUrl });
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const result = evt.target?.result as string;
-        if (result) {
-          handleImageUrlChange(result);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleUseDefaultImage = () => {
@@ -196,21 +181,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-[11px] font-semibold text-[#434654]">
-                Image URL or Upload File:
-              </label>
-              <label className="cursor-pointer text-[10px] text-[#003d9b] font-bold bg-[#dae2ff] hover:bg-[#b9cde5] px-2 py-0.5 rounded flex items-center gap-1 transition-colors">
-                <Upload className="w-3 h-3" />
-                <span>Upload File</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
+            <label className="block text-[11px] font-semibold text-[#434654] mb-1">
+              Image URL:
+            </label>
             <input
               type="text"
               value={customImageUrl}
@@ -219,7 +192,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-2.5 py-1 text-xs font-mono text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
             />
             <p className="text-[10px] text-[#737685] mt-1 leading-tight">
-              Tip: Upload an image file from your device, or paste any image link.
+              Tip: Paste any direct photo or image web link.
             </p>
           </div>
         </section>
