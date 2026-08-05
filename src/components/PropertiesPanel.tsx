@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { EquipmentNode, Connection, PortId } from '../types';
 import { EQUIPMENT_IMAGES, EQUIPMENT_PORTS } from '../data/presetData';
+import { useLanguage } from '../context/LanguageContext';
 
 interface PropertiesPanelProps {
   node: EquipmentNode | null;
@@ -36,6 +37,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 }) => {
   const [imageError, setImageError] = useState(false);
   const [customImageUrl, setCustomImageUrl] = useState('');
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     if (node) {
@@ -48,9 +50,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     return (
       <aside className="w-80 bg-[#ffffff] border-l border-[#c3c6d6] flex flex-col h-full z-10 shrink-0 shadow-xs p-6 text-center justify-center items-center text-[#737685]">
         <Info className="w-8 h-8 mb-2 text-[#94a3b8]" />
-        <span className="font-semibold text-sm text-[#181c1f]">No Equipment Selected</span>
+        <span className="font-semibold text-sm text-[#181c1f]">{t('propTitle')}</span>
         <span className="text-xs text-[#737685] mt-1">
-          Click any equipment block on the canvas to inspect or modify its BIM properties.
+          {t('noSelection')}
         </span>
       </aside>
     );
@@ -74,12 +76,22 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'installed': return t('statusInstalled');
+      case 'pending': return t('statusPending');
+      case 'planned': return t('statusPlanned');
+      case 'maintenance': return t('statusMaintenance');
+      default: return status;
+    }
+  };
+
   return (
     <aside className="w-80 bg-[#ffffff] border-l border-[#c3c6d6] flex flex-col h-full z-10 shrink-0 shadow-xs relative">
       {/* Header */}
       <div className="px-3.5 py-2.5 border-b border-[#c3c6d6] bg-[#f1f4f8] flex items-center justify-between">
         <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
-          Equipment Properties
+          {t('propTitle')}
         </span>
         <button
           onClick={onClose}
@@ -108,7 +120,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   : 'bg-[#f1f5f9] text-[#475569] border-[#cbd5e1]'
               }`}
             >
-              {node.status}
+              {getStatusLabel(node.status)}
             </span>
           </div>
 
@@ -117,7 +129,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             value={node.name}
             onChange={(e) => onUpdateNode(node.id, { name: e.target.value })}
             className="w-full font-bold text-sm text-[#181c1f] bg-transparent border-b border-transparent hover:border-[#c3c6d6] focus:border-[#003d9b] focus:bg-white px-1 py-0.5 focus:outline-none rounded transition-colors"
-            placeholder="Equipment Name"
+            placeholder={t('labelName')}
           />
           <div className="text-xs text-[#434654] mt-1 px-1">
             {node.manufacturer} {node.model}
@@ -129,13 +141,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-[#434654] flex items-center gap-1.5">
               <ImageIcon className="w-3.5 h-3.5 text-[#003d9b]" />
-              Real-World Photo
+              {t('refPhotoUrl')}
             </label>
             <button
               onClick={handleUseDefaultImage}
               className="text-[10px] text-[#003d9b] hover:underline font-semibold"
             >
-              Use Preset Photo
+              Preset Photo
             </button>
           </div>
 
@@ -152,9 +164,6 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-[#f1f4f8] text-[#737685]">
                 <AlertCircle className="w-6 h-6 text-[#94a3b8] mb-1" />
                 <span className="text-xs font-semibold">Image Load Fallback</span>
-                <span className="text-[10px] text-[#94a3b8] mt-0.5">
-                  Check image URL or use default reference photo.
-                </span>
               </div>
             )}
 
@@ -189,13 +198,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         <section className="space-y-2.5">
           <label className="text-xs font-bold uppercase tracking-wider text-[#434654] flex items-center gap-1.5">
             <Tag className="w-3.5 h-3.5 text-[#003d9b]" />
-            Specifications
+            {t('propTitle')}
           </label>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[10px] font-semibold text-[#737685] mb-0.5">
-                Capacity / Rating
+                {t('capacityRating')}
               </label>
               <input
                 type="text"
@@ -207,7 +216,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
             <div>
               <label className="block text-[10px] font-semibold text-[#737685] mb-0.5">
-                Voltage
+                {t('voltageClass')}
               </label>
               <input
                 type="text"
@@ -221,7 +230,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[10px] font-semibold text-[#737685] mb-0.5">
-                Manufacturer
+                {t('manufacturer')}
               </label>
               <input
                 type="text"
@@ -233,7 +242,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
             <div>
               <label className="block text-[10px] font-semibold text-[#737685] mb-0.5">
-                Model Number
+                {t('modelNumber')}
               </label>
               <input
                 type="text"
@@ -246,7 +255,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
           <div>
             <label className="block text-[10px] font-semibold text-[#737685] mb-0.5">
-              Physical Location
+              {t('location')}
             </label>
             <div className="relative">
               <MapPin className="w-3.5 h-3.5 absolute left-2 top-2 text-[#737685]" />
@@ -261,7 +270,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
           <div>
             <label className="block text-[10px] font-semibold text-[#737685] mb-0.5">
-              Installation Status
+              {t('statusLabel')}
             </label>
             <select
               value={node.status}
@@ -270,10 +279,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               }
               className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-2 py-1 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
             >
-              <option value="installed">Installed (Verified)</option>
-              <option value="pending">Pending Approval</option>
-              <option value="planned">Planned / Construction</option>
-              <option value="maintenance">Maintenance Required</option>
+              <option value="installed">{t('statusInstalled')}</option>
+              <option value="pending">{t('statusPending')}</option>
+              <option value="planned">{t('statusPlanned')}</option>
+              <option value="maintenance">{t('statusMaintenance')}</option>
             </select>
           </div>
         </section>
@@ -283,13 +292,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <label className="text-xs font-bold uppercase tracking-wider text-[#434654] flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <Cable className="w-3.5 h-3.5 text-[#003d9b]" />
-              Electrical Connections ({nodeConnections.length})
+              {t('electricalConnections')} ({nodeConnections.length})
             </span>
           </label>
 
           {nodeConnections.length === 0 ? (
             <div className="text-xs text-[#737685] italic bg-[#f8fafc] p-2.5 rounded border border-[#e0e3e7] text-center">
-              No electrical connections linked yet. Click ports on canvas to wire.
+              No electrical connections linked yet.
             </div>
           ) : (
             <div className="border border-[#c3c6d6] rounded bg-[#ffffff] divide-y divide-[#ebeef2] text-xs">
@@ -338,14 +347,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         {/* Notes & Calculations */}
         <section className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-[#434654]">
-            Engineering Notes
+            {t('engineeringNotes')}
           </label>
           <textarea
             value={node.notes}
             onChange={(e) => onUpdateNode(node.id, { notes: e.target.value })}
             rows={3}
             className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded p-2 text-xs font-mono text-[#181c1f] focus:outline-none focus:border-[#003d9b] resize-none"
-            placeholder="Enter equipment notes, NEC compliance references..."
+            placeholder="Enter notes..."
           />
         </section>
 
@@ -356,10 +365,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             className="w-full py-2 border border-[#ba1a1a] text-[#ba1a1a] hover:bg-[#ffdad6] rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5"
           >
             <Trash2 className="w-4 h-4" />
-            <span>Remove Equipment Block</span>
+            <span>{t('deleteComponent')}</span>
           </button>
         </div>
       </div>
     </aside>
   );
 };
+

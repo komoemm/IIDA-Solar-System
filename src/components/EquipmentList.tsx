@@ -12,6 +12,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { EquipmentNode, EquipmentType } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface EquipmentListProps {
   nodes: EquipmentNode[];
@@ -28,6 +29,17 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const { language, t } = useLanguage();
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'installed': return t('statusInstalled');
+      case 'pending': return t('statusPending');
+      case 'planned': return t('statusPlanned');
+      case 'maintenance': return t('statusMaintenance');
+      default: return status;
+    }
+  };
 
   // Summary Metrics Calculations
   let totalPvKw = 0;
@@ -64,9 +76,9 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
         {/* Header Title & Add Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-[#181c1f]">Equipment Inventory &amp; Bill of Materials (BOM)</h1>
+            <h1 className="text-xl font-bold text-[#181c1f]">{t('inventoryTitle')}</h1>
             <p className="text-xs text-[#434654] mt-0.5">
-              Comprehensive technical schedule of all solar arrays, power conversion units, batteries, panels, and grid assets.
+              {t('inventorySubtitle')}
             </p>
           </div>
 
@@ -75,7 +87,7 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
             className="flex items-center gap-2 px-4 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded shadow-xs transition-colors self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New Equipment</span>
+            <span>{t('addEquipmentModalBtn')}</span>
           </button>
         </div>
 
@@ -87,7 +99,7 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
             </div>
             <div>
               <span className="text-xs font-semibold text-[#737685] uppercase tracking-wider block">
-                Total Solar PV Peak
+                {t('totalSolar')}
               </span>
               <span className="text-lg font-bold text-[#181c1f] font-mono">
                 {totalPvKw.toFixed(1)} kWp
@@ -101,7 +113,7 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
             </div>
             <div>
               <span className="text-xs font-semibold text-[#737685] uppercase tracking-wider block">
-                Total Battery Storage
+                {t('totalStorage')}
               </span>
               <span className="text-lg font-bold text-[#181c1f] font-mono">
                 {totalBessKwh.toFixed(1)} kWh
@@ -115,7 +127,7 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
             </div>
             <div>
               <span className="text-xs font-semibold text-[#737685] uppercase tracking-wider block">
-                Inverter AC Rating
+                {t('capacityRating')} (AC)
               </span>
               <span className="text-lg font-bold text-[#181c1f] font-mono">
                 {totalInverterKw.toFixed(1)} kW AC
@@ -129,10 +141,10 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
             </div>
             <div>
               <span className="text-xs font-semibold text-[#737685] uppercase tracking-wider block">
-                Equipment Items Count
+                {t('totalCount')}
               </span>
               <span className="text-lg font-bold text-[#181c1f] font-mono">
-                {nodes.length} Components
+                {nodes.length}
               </span>
             </div>
           </div>
@@ -146,27 +158,27 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Filter by name, ID, location, brand..."
+              placeholder={t('searchPlaceholder')}
               className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded pl-9 pr-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto">
             <Filter className="w-4 h-4 text-[#737685]" />
-            <span className="text-xs font-semibold text-[#434654]">Filter Type:</span>
+            <span className="text-xs font-semibold text-[#434654]">{t('colType')}:</span>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className="bg-[#f8fafc] border border-[#c3c6d6] rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
             >
-              <option value="all">All Equipment Types</option>
-              <option value="pv_array">PV Arrays</option>
-              <option value="combiner_box">Combiner Boxes</option>
-              <option value="inverter">Inverters</option>
-              <option value="battery">Batteries</option>
-              <option value="grid">Grid Connections</option>
-              <option value="generator">Generators</option>
-              <option value="ac_panel">AC Panels</option>
+              <option value="all">{t('catAll')}</option>
+              <option value="pv_array">{t('pv_array')}</option>
+              <option value="combiner_box">{t('combiner_box')}</option>
+              <option value="inverter">{t('inverter')}</option>
+              <option value="battery">{t('battery')}</option>
+              <option value="grid">{t('grid')}</option>
+              <option value="generator">{t('generator')}</option>
+              <option value="ac_panel">{t('ac_panel')}</option>
             </select>
           </div>
         </div>

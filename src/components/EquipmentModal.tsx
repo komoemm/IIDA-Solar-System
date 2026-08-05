@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Image as ImageIcon } from 'lucide-react';
 import { EquipmentType } from '../types';
 import { LIBRARY_ITEMS, EQUIPMENT_IMAGES } from '../data/presetData';
+import { useLanguage } from '../context/LanguageContext';
 
 interface EquipmentModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   const [model, setModel] = useState('');
   const [location, setLocation] = useState('Utility Area');
   const [imageUrl, setImageUrl] = useState('');
+  const { language, t } = useLanguage();
 
   if (!isOpen) return null;
 
@@ -68,7 +70,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
         {/* Header */}
         <div className="px-5 py-3 border-b border-[#ebeef2] bg-[#f1f4f8] flex items-center justify-between">
           <span className="font-bold text-sm text-[#181c1f] uppercase tracking-wider">
-            Add Equipment to BIM Diagram
+            {t('addEquipmentTitle')}
           </span>
           <button
             onClick={onClose}
@@ -82,7 +84,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
           {/* Select Equipment Type Grid */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#434654] mb-2">
-              Select Equipment Category
+              {t('selectCategory')}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {LIBRARY_ITEMS.map((item) => (
@@ -109,7 +111,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div>
               <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-                Equipment Label Name
+                {t('labelName')}
               </label>
               <input
                 type="text"
@@ -123,7 +125,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-                Capacity Rating
+                {t('capacityRating')}
               </label>
               <input
                 type="text"
@@ -137,7 +139,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-                Voltage Class
+                {t('voltageClass')}
               </label>
               <input
                 type="text"
@@ -150,7 +152,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-                Location
+                {t('location')}
               </label>
               <input
                 type="text"
@@ -163,7 +165,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-                Manufacturer
+                {t('manufacturer')}
               </label>
               <input
                 type="text"
@@ -176,7 +178,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-                Model Number
+                {t('modelNumber')}
               </label>
               <input
                 type="text"
@@ -190,7 +192,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
           <div>
             <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-              Reference Photo URL
+              {t('refPhotoUrl')}
             </label>
             <input
               type="text"
@@ -207,13 +209,13 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#434654] font-semibold text-xs rounded"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               className="px-5 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded shadow-xs"
             >
-              Add Component
+              {t('addComponent')}
             </button>
           </div>
         </form>
@@ -221,3 +223,4 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
     </div>
   );
 };
+

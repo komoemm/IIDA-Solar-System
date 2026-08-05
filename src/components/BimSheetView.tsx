@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { EquipmentNode, Connection, ProjectMetadata } from '../types';
 import { exportElementToPng, exportDiagramToSvg } from '../utils/exportUtils';
+import { useLanguage } from '../context/LanguageContext';
 
 interface BimSheetViewProps {
   nodes: EquipmentNode[];
@@ -24,6 +25,8 @@ export const BimSheetView: React.FC<BimSheetViewProps> = ({
   metadata,
   designNotes,
 }) => {
+  const { language, t } = useLanguage();
+
   // Calculations
   let totalPvKw = 0;
   let totalBessKwh = 0;
@@ -55,7 +58,7 @@ export const BimSheetView: React.FC<BimSheetViewProps> = ({
       {/* Top Floating Print Controls */}
       <div className="w-full max-w-6xl mb-4 flex items-center justify-between bg-[#181c1f] text-white p-3 rounded shadow-md">
         <div>
-          <span className="font-bold text-sm block">BIM Technical Drawing Sheet</span>
+          <span className="font-bold text-sm block">{t('viewSheet')}</span>
           <span className="text-xs text-[#94a3b8]">
             ANSI D-Size Standard Single-Line Diagram Layout Frame
           </span>
@@ -67,7 +70,7 @@ export const BimSheetView: React.FC<BimSheetViewProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ffffff] text-[#181c1f] hover:bg-[#e0e3e7] font-bold text-xs rounded transition-colors"
           >
             <Printer className="w-4 h-4" />
-            <span>Print Sheet</span>
+            <span>{t('printSheet')}</span>
           </button>
 
           <button
@@ -75,7 +78,7 @@ export const BimSheetView: React.FC<BimSheetViewProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded transition-colors"
           >
             <Download className="w-4 h-4" />
-            <span>Export PNG</span>
+            <span>{t('exportPng')}</span>
           </button>
 
           <button
@@ -83,7 +86,7 @@ export const BimSheetView: React.FC<BimSheetViewProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#285ab9] hover:bg-[#0052cc] text-white font-bold text-xs rounded transition-colors"
           >
             <FileCode className="w-4 h-4" />
-            <span>Export Vector SVG</span>
+            <span>{t('exportSvg')}</span>
           </button>
         </div>
       </div>

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { LIBRARY_ITEMS } from '../data/presetData';
 import { EquipmentType, EquipmentLibraryItem } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface EquipmentPaletteProps {
   onAddEquipment: (type: EquipmentType) => void;
@@ -23,11 +24,34 @@ interface EquipmentPaletteProps {
 export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipment }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const { language, t } = useLanguage();
 
   const categories = ['All', 'Generation', 'Conversion', 'Storage', 'Distribution', 'Loads'];
 
+  const getCategoryLabel = (cat: string) => {
+    switch (cat) {
+      case 'All': return t('catAll');
+      case 'Generation': return t('catGeneration');
+      case 'Conversion': return t('catConversion');
+      case 'Storage': return t('catStorage');
+      case 'Distribution': return t('catDistribution');
+      case 'Loads': return t('catLoads');
+      default: return cat;
+    }
+  };
+
+  const getEquipmentName = (item: EquipmentLibraryItem) => {
+    if (language === 'ja') {
+      const translated = t(item.type as any);
+      if (translated) return translated;
+    }
+    return item.defaultName;
+  };
+
   const filteredItems = LIBRARY_ITEMS.filter((item) => {
+    const itemName = getEquipmentName(item);
     const matchesSearch =
+      itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.defaultName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.defaultManufacturer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.type.toLowerCase().includes(searchTerm.toLowerCase());
@@ -87,10 +111,10 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
       {/* Header */}
       <div className="px-3.5 py-2.5 border-b border-[#c3c6d6] bg-[#f1f4f8] flex items-center justify-between">
         <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
-          Equipment Library
+          {t('libraryTitle')}
         </span>
         <span className="text-[10px] font-mono font-semibold text-[#434654] bg-[#e0e3e7] px-1.5 py-0.5 rounded">
-          {filteredItems.length} items
+          {filteredItems.length} {t('itemsCount')}
         </span>
       </div>
 
@@ -100,7 +124,7 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#737685]" />
           <input
             type="text"
-            placeholder="Search equipment..."
+            placeholder={t('searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded pl-8 pr-2.5 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] focus:ring-1 focus:ring-[#003d9b]"
@@ -119,7 +143,7 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
                   : 'bg-[#f1f4f8] text-[#434654] hover:bg-[#e0e3e7]'
               }`}
             >
-              {cat}
+              {getCategoryLabel(cat)}
             </button>
           ))}
         </div>
@@ -129,74 +153,77 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
       <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
         {filteredItems.length === 0 ? (
           <div className="text-center py-8 text-xs text-[#737685]">
-            No matching solar equipment found.
+            {t('noItemsFound')}
           </div>
         ) : (
-          filteredItems.map((item) => (
-            <div
-              key={item.type}
-              draggable
-              onDragStart={(e) => handleDragStart(e, item)}
-              onClick={() => onAddEquipment(item.type)}
-              className="group relative bg-[#ffffff] hover:bg-[#f1f4f8] border border-[#c3c6d6] hover:border-[#003d9b] rounded p-2 transition-all cursor-grab active:cursor-grabbing shadow-2xs flex gap-2.5 items-center"
-              title="Drag onto canvas or click to add"
-            >
-              {/* Image / Icon Thumbnail */}
-              <div className="relative w-12 h-12 rounded bg-[#ebeef2] overflow-hidden border border-[#c3c6d6] shrink-0 flex items-center justify-center">
-                <img
-                  src={item.imageUrl}
-                  alt={item.defaultName}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  onError={(e) => {
-                    // Fallback to icon if image fails
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
-                <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
-                <div className="absolute bottom-0.5 right-0.5 bg-white/90 rounded p-0.5 shadow-2xs">
-                  {getItemIcon(item.type)}
-                </div>
-              </div>
-
-              {/* Text Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="font-semibold text-xs text-[#181c1f] truncate leading-tight">
-                    {item.defaultName}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddEquipment(item.type);
+          filteredItems.map((item) => {
+            const displayName = getEquipmentName(item);
+            return (
+              <div
+                key={item.type}
+                draggable
+                onDragStart={(e) => handleDragStart(e, item)}
+                onClick={() => onAddEquipment(item.type)}
+                className="group relative bg-[#ffffff] hover:bg-[#f1f4f8] border border-[#c3c6d6] hover:border-[#003d9b] rounded p-2 transition-all cursor-grab active:cursor-grabbing shadow-2xs flex gap-2.5 items-center"
+                title="Drag onto canvas or click to add"
+              >
+                {/* Image / Icon Thumbnail */}
+                <div className="relative w-12 h-12 rounded bg-[#ebeef2] overflow-hidden border border-[#c3c6d6] shrink-0 flex items-center justify-center">
+                  <img
+                    src={item.imageUrl}
+                    alt={displayName}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-[#003d9b] hover:bg-[#003d9b]/10 rounded transition-all"
-                    title="Add to Canvas"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                  />
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
+                  <div className="absolute bottom-0.5 right-0.5 bg-white/90 rounded p-0.5 shadow-2xs">
+                    {getItemIcon(item.type)}
+                  </div>
                 </div>
-                <div className="text-[10px] font-mono text-[#434654] truncate mt-0.5">
-                  {item.defaultCapacity}
-                </div>
-                <div className="flex items-center gap-1 text-[9px] text-[#737685] mt-0.5">
-                  {getCategoryIcon(item.category)}
-                  <span className="uppercase font-semibold tracking-wider">
-                    {item.category}
-                  </span>
-                </div>
-              </div>
 
-              <GripVertical className="w-3.5 h-3.5 text-[#cbd5e1] opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          ))
+                {/* Text Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-semibold text-xs text-[#181c1f] truncate leading-tight">
+                      {displayName}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddEquipment(item.type);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-[#003d9b] hover:bg-[#003d9b]/10 rounded transition-all"
+                      title="Add to Canvas"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="text-[10px] font-mono text-[#434654] truncate mt-0.5">
+                    {item.defaultCapacity}
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] text-[#737685] mt-0.5">
+                    {getCategoryIcon(item.category)}
+                    <span className="uppercase font-semibold tracking-wider">
+                      {getCategoryLabel(item.category)}
+                    </span>
+                  </div>
+                </div>
+
+                <GripVertical className="w-3.5 h-3.5 text-[#cbd5e1] opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            );
+          })
         )}
       </div>
 
       {/* Bottom Hint */}
       <div className="p-2 border-t border-[#ebeef2] bg-[#f8fafc] text-[10px] text-[#737685] text-center">
-        Drag items onto canvas or click + to insert
+        {t('dragHint')}
       </div>
     </aside>
   );
 };
+

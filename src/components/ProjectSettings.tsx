@@ -1,6 +1,7 @@
 import React from 'react';
 import { ProjectMetadata } from '../types';
 import { Save, CheckCircle2, Shield, FileText, Globe, ShieldCheck, ExternalLink } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ProjectSettingsProps {
   metadata: ProjectMetadata;
@@ -11,12 +12,14 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
   metadata,
   onUpdateMetadata,
 }) => {
+  const { language, t } = useLanguage();
+
   return (
     <div className="flex-1 bg-[#f8fafc] p-6 overflow-y-auto font-sans">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-xl font-bold text-[#181c1f]">
-            Project &amp; CAD Sheet Configuration
+            {t('projectSettings')}
           </h1>
           <p className="text-xs text-[#434654] mt-0.5">
             Configure single-line diagram metadata, company information, drawing scale, and code compliance standards.
@@ -31,13 +34,13 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
             </div>
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#003d9b] block">
-                Company Ownership &amp; Reservation Notice
+                {t('companyNotice')}
               </span>
               <h2 className="text-base font-bold text-[#181c1f] mt-0.5">
                 IIDA ELECTRONICS(MYANMAR) CO.,LTD.
               </h2>
               <p className="text-xs text-[#434654] mt-1">
-                This Web Application and all generated BIM single-line diagrams, engineering CAD assets, and system inventory reports are reserved for official company use.
+                {t('companyReservedDesc')}
               </p>
             </div>
           </div>
@@ -59,14 +62,14 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
           <div className="flex items-center gap-2 pb-3 border-b border-[#ebeef2]">
             <FileText className="w-5 h-5 text-[#003d9b]" />
             <span className="font-bold text-sm text-[#181c1f] uppercase tracking-wider">
-              Drawing Sheet Header Metadata
+              {t('drawingMetadata')}
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Project Title
+                {t('projectTitle')}
               </label>
               <input
                 type="text"
@@ -78,7 +81,7 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Drawing Number
+                {t('drawingNumber')}
               </label>
               <input
                 type="text"
@@ -90,7 +93,7 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Client / Company Name
+                {t('clientCompany')}
               </label>
               <input
                 type="text"
@@ -102,7 +105,7 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Site Location Address
+                {t('siteLocation')}
               </label>
               <input
                 type="text"
@@ -114,7 +117,7 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Lead Designer (P.E.)
+                {t('leadDesigner')}
               </label>
               <input
                 type="text"
@@ -126,7 +129,7 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Quality Checker / SE
+                {t('qualityChecker')}
               </label>
               <input
                 type="text"
@@ -138,7 +141,7 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Drawing Revision Level
+                {t('drawingRevision')}
               </label>
               <input
                 type="text"
@@ -150,7 +153,7 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#434654] mb-1">
-                Interconnection Ruleset
+                {t('interconnectionStandard')}
               </label>
               <select
                 value={metadata.interconnectionStandard}
@@ -169,3 +172,4 @@ export const ProjectSettings: React.FC<ProjectSettingsProps> = ({
     </div>
   );
 };
+

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { LIBRARY_ITEMS } from '../data/presetData';
 import { EquipmentType, EquipmentLibraryItem } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ReferenceGalleryProps {
   onAddEquipment: (type: EquipmentType) => void;
@@ -20,6 +21,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [selectedPhotoItem, setSelectedPhotoItem] = useState<EquipmentLibraryItem | null>(null);
+  const { language, t } = useLanguage();
 
   const categories = ['All', 'Generation', 'Conversion', 'Storage', 'Distribution', 'Loads'];
 
@@ -38,7 +40,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
         {/* Header Title */}
         <div>
           <h1 className="text-xl font-bold text-[#181c1f]">
-            Equipment Reference Photo Catalog &amp; Specification Gallery
+            {t('refCatalog')}
           </h1>
           <p className="text-xs text-[#434654] mt-0.5">
             Real-world reference photos, physical specifications, and documentation sheets for hybrid solar BIM design.
@@ -53,7 +55,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search equipment reference photos..."
+              placeholder={t('searchPlaceholder')}
               className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded pl-9 pr-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
             />
           </div>
@@ -69,7 +71,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
                     : 'bg-[#f1f4f8] text-[#434654] hover:bg-[#e0e3e7]'
                 }`}
               >
-                {cat}
+                {cat === 'All' ? t('catAll') : cat}
               </button>
             ))}
           </div>
@@ -125,11 +127,11 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
 
                 <div className="space-y-1.5 text-xs border-t border-[#ebeef2] pt-2.5">
                   <div className="flex justify-between">
-                    <span className="text-[#737685]">Capacity Rating:</span>
+                    <span className="text-[#737685]">{t('capacityRating')}:</span>
                     <span className="font-mono font-bold text-[#003d9b]">{item.defaultCapacity}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#737685]">Voltage Class:</span>
+                    <span className="text-[#737685]">{t('voltageClass')}:</span>
                     <span className="font-mono text-[#181c1f]">{item.defaultVoltage}</span>
                   </div>
                 </div>
@@ -141,7 +143,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
                     className="flex-1 py-1.5 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded shadow-2xs transition-colors flex items-center justify-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add to Canvas</span>
+                    <span>{t('addComponent')}</span>
                   </button>
 
                   {item.specSheetUrl && (
@@ -212,7 +214,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
                   }}
                   className="px-4 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded shadow-xs"
                 >
-                  Insert Into Diagram Canvas
+                  {t('addComponent')}
                 </button>
               </div>
             </div>
@@ -222,3 +224,4 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({ onAddEquipme
     </div>
   );
 };
+

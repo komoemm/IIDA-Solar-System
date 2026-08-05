@@ -13,8 +13,10 @@ import {
   CheckCircle2,
   ExternalLink,
   ShieldCheck,
+  Globe,
 } from 'lucide-react';
 import { ProjectMetadata } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface HeaderProps {
   activeTab: 'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings';
@@ -50,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   onResetSample,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { language, setLanguage, toggleLanguage, t } = useLanguage();
 
   return (
     <header className="fixed top-0 left-0 w-full z-40 bg-[#ffffff] border-b border-[#c3c6d6] shadow-sm font-sans">
@@ -87,6 +90,34 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Action Tools */}
         <div className="flex items-center gap-2">
+          {/* Language Switcher Badge */}
+          <div className="flex items-center border border-[#a6c8ff] rounded-full bg-[#dae2ff]/30 p-0.5 mr-1 shadow-2xs">
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-full transition-all flex items-center gap-1 ${
+                language === 'en'
+                  ? 'bg-[#003d9b] text-white shadow-xs'
+                  : 'text-[#003d9b] hover:bg-[#dae2ff]/60'
+              }`}
+              title="Switch language to English"
+            >
+              <span>🇺🇸</span>
+              <span>EN</span>
+            </button>
+            <button
+              onClick={() => setLanguage('ja')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-full transition-all flex items-center gap-1 ${
+                language === 'ja'
+                  ? 'bg-[#003d9b] text-white shadow-xs'
+                  : 'text-[#003d9b] hover:bg-[#dae2ff]/60'
+              }`}
+              title="日本語に言語を切り替えます"
+            >
+              <span>🇯🇵</span>
+              <span>日本語</span>
+            </button>
+          </div>
+
           {/* Undo/Redo */}
           <div className="flex items-center border border-[#c3c6d6] rounded bg-[#f1f4f8] overflow-hidden">
             <button
@@ -97,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
                   : 'text-[#737685] opacity-40 cursor-not-allowed'
               }`}
-              title="Undo (Ctrl+Z)"
+              title={t('undo')}
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -110,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
                   : 'text-[#737685] opacity-40 cursor-not-allowed'
               }`}
-              title="Redo (Ctrl+Y)"
+              title={t('redo')}
             >
               <RotateCw className="w-4 h-4" />
             </button>
@@ -120,10 +151,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onAutoLayout}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#434654] bg-[#f1f4f8] hover:bg-[#e0e3e7] border border-[#c3c6d6] rounded transition-colors"
-            title="Automatically arrange diagram nodes in logical electrical flow"
+            title={t('autoLayout')}
           >
             <Layout className="w-3.5 h-3.5 text-[#003d9b]" />
-            <span className="hidden sm:inline">Auto-Layout</span>
+            <span className="hidden sm:inline">{t('autoLayout')}</span>
           </button>
 
           {/* Add Equipment */}
@@ -132,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Equipment</span>
+            <span>{t('addEquipment')}</span>
           </button>
 
           {/* Export Dropdown / Buttons */}
@@ -140,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onExportPng}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title="Export Canvas to PNG"
+              title={t('exportPng')}
             >
               <ImageIcon className="w-3.5 h-3.5 text-[#003d9b]" />
               <span className="hidden md:inline">PNG</span>
@@ -149,7 +180,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onExportSvg}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title="Export Diagram Vector SVG"
+              title={t('exportSvg')}
             >
               <FileCode className="w-3.5 h-3.5 text-[#285ab9]" />
               <span className="hidden md:inline">SVG</span>
@@ -158,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onExportJson}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title="Save Project JSON"
+              title={t('exportJson')}
             >
               <Download className="w-3.5 h-3.5 text-[#004483]" />
               <span className="hidden lg:inline">JSON</span>
@@ -175,7 +206,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => fileInputRef.current?.click()}
               className="p-1.5 text-[#434654] hover:bg-[#f1f4f8] border border-[#c3c6d6] rounded transition-colors"
-              title="Import Project JSON"
+              title={t('importJson')}
             >
               <Upload className="w-3.5 h-3.5" />
             </button>
@@ -194,7 +225,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <span>Diagram Canvas</span>
+            <span>{t('navCanvas')}</span>
           </button>
 
           <button
@@ -205,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <span>Equipment Inventory</span>
+            <span>{t('navInventory')}</span>
           </button>
 
           <button
@@ -216,7 +247,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <span>BIM Drawing Sheet</span>
+            <span>{t('navBim')}</span>
           </button>
 
           <button
@@ -227,7 +258,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <span>Reference Gallery</span>
+            <span>{t('navGallery')}</span>
           </button>
 
           <button
@@ -238,7 +269,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <span>Project Settings</span>
+            <span>{t('navSettings')}</span>
           </button>
         </div>
 
@@ -250,21 +281,22 @@ export const Header: React.FC<HeaderProps> = ({
             className="hidden xl:inline-flex items-center gap-1.5 text-[11px] text-[#003d9b] font-mono bg-[#dae2ff]/50 hover:bg-[#dae2ff] px-2.5 py-0.5 rounded border border-[#a6c8ff] font-semibold transition-colors"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-[#003d9b]" />
-            <span>Reserved by IIDA ELECTRONICS(MYANMAR) CO.,LTD.</span>
+            <span>{t('reservedBadge')}</span>
           </a>
           <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-[#059669] font-mono bg-[#ecfdf5] px-2 py-0.5 rounded border border-[#a7f3d0]">
             <CheckCircle2 className="w-3 h-3" />
-            <span>NEC 2023 Compliant</span>
+            <span>{t('necCompliant')}</span>
           </span>
           <button
             onClick={onResetSample}
             className="text-[10px] text-[#737685] hover:text-[#003d9b] underline font-mono"
             title="Reset diagram to initial hybrid solar preset"
           >
-            Reset Preset
+            {t('resetDemo')}
           </button>
         </div>
       </nav>
     </header>
   );
 };
+

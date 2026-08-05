@@ -27,6 +27,7 @@ import {
   EquipmentType,
 } from '../types';
 import { EQUIPMENT_PORTS } from '../data/presetData';
+import { useLanguage } from '../context/LanguageContext';
 
 interface DiagramCanvasProps {
   nodes: EquipmentNode[];
@@ -67,6 +68,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   designNotes,
   onChangeDesignNotes,
 }) => {
+  const { language, t } = useLanguage();
   // Canvas Viewport Transforms
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -711,24 +713,24 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
         {/* Connection Legend */}
         <div className="w-64 p-3 flex flex-col justify-between">
           <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f] mb-1">
-            Connection Legend
+            {t('legendTitle')}
           </span>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <div className="w-6 h-[3px] bg-[#0052cc] rounded-full" />
-              <span className="text-xs text-[#434654]">DC Power (PV / Battery)</span>
+              <span className="text-xs text-[#434654]">{t('dcPower')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-[3px] bg-[#334155] rounded-full" />
-              <span className="text-xs text-[#434654]">AC Power (Grid / Panels)</span>
+              <span className="text-xs text-[#434654]">{t('acPower')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-[2px] bg-[#ea580c] border-b border-dashed border-[#ea580c]" />
-              <span className="text-xs text-[#434654]">CAN Bus / Comms Line</span>
+              <span className="text-xs text-[#434654]">{t('commsLine')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-[2px] bg-[#16a34a] border-b border-dashed border-[#16a34a]" />
-              <span className="text-xs text-[#434654]">Grounding Conductor</span>
+              <span className="text-xs text-[#434654]">{t('groundLine')}</span>
             </div>
           </div>
         </div>
@@ -737,7 +739,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
         <div className="flex-1 p-3 flex flex-col">
           <div className="flex items-center justify-between mb-1">
             <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
-              Engineering Calculation Assumptions & Design Notes
+              {t('engineeringNotes')}
             </span>
             <span className="text-[10px] text-[#737685] font-mono">Autosaved</span>
           </div>
@@ -745,7 +747,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
             value={designNotes}
             onChange={(e) => onChangeDesignNotes(e.target.value)}
             className="flex-1 w-full bg-[#f8fafc] border border-[#c3c6d6] rounded p-2 font-mono text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] resize-none"
-            placeholder="Type engineering notes, voltage drop calculations, NEC references..."
+            placeholder="Type notes..."
           />
         </div>
       </div>
