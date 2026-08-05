@@ -1,0 +1,6 @@
+{
+  "name": "IIDA Solar BIM Portal",
+  "description": "Solar & Hybrid Energy BIM Diagram and Asset Inventory Portal reserved by IIDA ELECTRONICS(MYANMAR) CO.,LTD. (https://www.iida-imm.com/).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
