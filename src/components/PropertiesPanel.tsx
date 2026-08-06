@@ -19,27 +19,39 @@ import { useLanguage } from '../context/LanguageContext';
 
 interface PropertiesPanelProps {
   node: EquipmentNode | null;
+  selectedNodes?: EquipmentNode[];
+  selectedNodeIds?: string[];
   selectedConnection?: Connection | null;
   connections: Connection[];
   allNodes: EquipmentNode[];
   legendTypes?: CustomLegendType[];
   onUpdateNode: (id: string, updates: Partial<EquipmentNode>) => void;
+  onBatchUpdateNodes?: (ids: string[], updates: Partial<EquipmentNode>) => void;
   onUpdateConnection?: (id: string, updates: Partial<Connection>) => void;
   onDeleteNode: (id: string) => void;
+  onDeleteNodes?: (ids: string[]) => void;
   onDeleteConnection: (connId: string) => void;
+  onSelectNode?: (id: string | null) => void;
+  onSelectNodes?: (ids: string[]) => void;
   onClose: () => void;
 }
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   node,
+  selectedNodes,
+  selectedNodeIds = [],
   selectedConnection,
   connections,
   allNodes,
   legendTypes = DEFAULT_LEGEND_TYPES,
   onUpdateNode,
+  onBatchUpdateNodes,
   onUpdateConnection,
   onDeleteNode,
+  onDeleteNodes,
   onDeleteConnection,
+  onSelectNode,
+  onSelectNodes,
   onClose,
 }) => {
   const [imageError, setImageError] = useState(false);
@@ -191,6 +203,149 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             >
               <Trash2 className="w-4 h-4" />
               <span>Remove Connection Line</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  if (selectedNodes && selectedNodes.length > 1) {
+    const nodeIds = selectedNodes.map((n) => n.id);
+    return (
+      <aside className="w-80 bg-[#ffffff] border-l border-[#c3c6d6] flex flex-col h-full z-10 shrink-0 shadow-xs relative">
+        {/* Panel Header */}
+        <div className="px-3.5 py-2.5 border-b border-[#c3c6d6] bg-[#003d9b] text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Tag className="w-4 h-4 text-[#a6c8ff]" />
+            <span className="font-bold text-xs uppercase tracking-wider">
+              Multi-Component Specs ({selectedNodes.length})
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
+            title="Close Panel"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4 overflow-y-auto flex-1 text-xs">
+          {/* Selected items chip list */}
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#737685] block mb-1.5">
+              Selected Equipment ({selectedNodes.length}):
+            </span>
+            <div className="flex flex-wrap gap-1 max-h-36 overflow-y-auto p-1.5 bg-[#f8fafc] border border-[#c3c6d6] rounded">
+              {selectedNodes.map((n) => (
+                <div
+                  key={n.id}
+                  className="bg-[#dae2ff] text-[#003d9b] border border-[#a6c8ff] rounded px-1.5 py-0.5 text-[11px] font-semibold flex items-center gap-1"
+                >
+                  <span className="font-mono">{n.id}</span>
+                  <button
+                    onClick={() => {
+                      if (onSelectNodes) {
+                        onSelectNodes(nodeIds.filter((id) => id !== n.id));
+                      }
+                    }}
+                    className="hover:bg-[#003d9b] hover:text-white rounded p-0.5 transition-colors"
+                    title={`Remove ${n.id} from multi-selection`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Batch Status Changer */}
+          <div className="space-y-1 bg-[#f1f4f8] p-3 rounded border border-[#c3c6d6]">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[#181c1f] block">
+              Batch Operational Status:
+            </label>
+            <select
+              onChange={(e) => {
+                if (e.target.value && onBatchUpdateNodes) {
+                  onBatchUpdateNodes(nodeIds, { status: e.target.value as any });
+                }
+              }}
+              defaultValue=""
+              className="w-full bg-[#ffffff] border border-[#c3c6d6] rounded px-2 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] font-medium"
+            >
+              <option value="" disabled>-- Select Status for all selected --</option>
+              <option value="installed">{t('statusInstalled')}</option>
+              <option value="pending">{t('statusPending')}</option>
+              <option value="planned">{t('statusPlanned')}</option>
+              <option value="maintenance">{t('statusMaintenance')}</option>
+            </select>
+          </div>
+
+          {/* Batch Category Changer */}
+          <div className="space-y-1 bg-[#f1f4f8] p-3 rounded border border-[#c3c6d6]">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[#181c1f] block">
+              Batch System Category:
+            </label>
+            <select
+              onChange={(e) => {
+                if (e.target.value && onBatchUpdateNodes) {
+                  onBatchUpdateNodes(nodeIds, { category: e.target.value });
+                }
+              }}
+              defaultValue=""
+              className="w-full bg-[#ffffff] border border-[#c3c6d6] rounded px-2 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] font-medium"
+            >
+              <option value="" disabled>-- Select Category for all selected --</option>
+              <option value="Generation">Generation</option>
+              <option value="Conversion">Conversion</option>
+              <option value="Storage">Storage</option>
+              <option value="Distribution">Distribution</option>
+              <option value="Controls">Controls</option>
+              <option value="Grid">Grid Connection</option>
+            </select>
+          </div>
+
+          {/* Batch Location Setter */}
+          <div className="space-y-1 bg-[#f1f4f8] p-3 rounded border border-[#c3c6d6]">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[#181c1f] block">
+              Batch Equipment Location:
+            </label>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                placeholder="e.g. Electrical Room / Garage"
+                id="batch-location-input"
+                className="flex-1 bg-[#ffffff] border border-[#c3c6d6] rounded px-2 py-1 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
+              />
+              <button
+                onClick={() => {
+                  const input = document.getElementById('batch-location-input') as HTMLInputElement;
+                  if (input && input.value.trim() && onBatchUpdateNodes) {
+                    onBatchUpdateNodes(nodeIds, { location: input.value.trim() });
+                  }
+                }}
+                className="px-2.5 py-1 bg-[#003d9b] hover:bg-[#002b70] text-white rounded text-xs font-bold transition-colors shrink-0"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+
+          {/* Delete All Selected Components Button */}
+          <div className="pt-3 border-t border-[#ebeef2]">
+            <button
+              onClick={() => {
+                if (onDeleteNodes) {
+                  onDeleteNodes(nodeIds);
+                } else {
+                  nodeIds.forEach((id) => onDeleteNode(id));
+                }
+              }}
+              className="w-full py-2.5 border-2 border-[#ba1a1a] bg-[#ffdad6] hover:bg-[#ba1a1a] hover:text-white text-[#ba1a1a] rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete {selectedNodes.length} Selected Components</span>
             </button>
           </div>
         </div>

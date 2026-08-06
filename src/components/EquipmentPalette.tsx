@@ -21,6 +21,7 @@ import { useLanguage } from '../context/LanguageContext';
 interface EquipmentPaletteProps {
   onAddEquipment: (type: EquipmentType) => void;
   onAddEquipmentFromCatalog?: (item: EquipmentLibraryItem) => void;
+  onSelectItem?: (item: EquipmentLibraryItem) => void;
   catalogItems?: EquipmentLibraryItem[];
   onClose?: () => void;
 }
@@ -28,6 +29,7 @@ interface EquipmentPaletteProps {
 export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({
   onAddEquipment,
   onAddEquipmentFromCatalog,
+  onSelectItem,
   catalogItems = LIBRARY_ITEMS,
   onClose,
 }) => {
@@ -186,13 +188,17 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({
                 key={`${item.type}-${item.defaultName}`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, item)}
-                onClick={() =>
-                  onAddEquipmentFromCatalog
-                    ? onAddEquipmentFromCatalog(item)
-                    : onAddEquipment(item.type)
-                }
-                className="group relative bg-[#ffffff] hover:bg-[#f1f4f8] border border-[#c3c6d6] hover:border-[#003d9b] rounded p-2 transition-all cursor-grab active:cursor-grabbing shadow-2xs flex gap-2.5 items-center"
-                title="Drag onto canvas or click to add"
+                onClick={() => {
+                  if (onSelectItem) {
+                    onSelectItem(item);
+                  } else if (onAddEquipmentFromCatalog) {
+                    onAddEquipmentFromCatalog(item);
+                  } else {
+                    onAddEquipment(item.type);
+                  }
+                }}
+                className="group relative bg-[#ffffff] hover:bg-[#f1f4f8] border border-[#c3c6d6] hover:border-[#003d9b] rounded p-2 transition-all cursor-pointer shadow-2xs flex gap-2.5 items-center"
+                title="Click to view specifications or select component on canvas"
               >
                 {/* Image / Icon Thumbnail */}
                 <div className="relative w-12 h-12 rounded bg-[#ebeef2] overflow-hidden border border-[#c3c6d6] shrink-0 flex items-center justify-center">

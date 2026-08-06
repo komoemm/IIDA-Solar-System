@@ -46,6 +46,7 @@ interface DiagramCanvasProps {
   nodes: EquipmentNode[];
   connections: Connection[];
   selectedNodeId: string | null;
+  selectedNodeIds?: string[];
   selectedConnectionId: string | null;
   legendTypes?: CustomLegendType[];
   activeWiringType?: string;
@@ -53,8 +54,10 @@ interface DiagramCanvasProps {
   onAddCustomLegendType?: (legend: CustomLegendType) => void;
   onDeleteCustomLegendType?: (id: string) => void;
   onSelectNode: (id: string | null) => void;
+  onSelectNodes?: (ids: string[]) => void;
   onSelectConnection: (id: string | null) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
+  onMoveNodes?: (ids: string[], deltaX: number, deltaY: number) => void;
   onFinalizeMoveNode: () => void;
   onAddConnection: (
     fromNodeId: string,
@@ -65,6 +68,8 @@ interface DiagramCanvasProps {
   ) => void;
   onUpdateConnection?: (id: string, updates: Partial<Connection>) => void;
   onDeleteNode: (id: string) => void;
+  onDeleteNodes?: (ids: string[]) => void;
+  onBatchUpdateNodes?: (ids: string[], updates: Partial<EquipmentNode>) => void;
   onDeleteConnection: (id: string) => void;
   onAddEquipmentFromDrop: (type: EquipmentType, x: number, y: number) => void;
   designNotes: string;
@@ -85,6 +90,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   nodes,
   connections,
   selectedNodeId,
+  selectedNodeIds,
   selectedConnectionId,
   legendTypes = DEFAULT_LEGEND_TYPES,
   activeWiringType = 'dc',
@@ -92,12 +98,16 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   onAddCustomLegendType,
   onDeleteCustomLegendType,
   onSelectNode,
+  onSelectNodes,
   onSelectConnection,
   onMoveNode,
+  onMoveNodes,
   onFinalizeMoveNode,
   onAddConnection,
   onUpdateConnection,
   onDeleteNode,
+  onDeleteNodes,
+  onBatchUpdateNodes,
   onDeleteConnection,
   onAddEquipmentFromDrop,
   designNotes,
@@ -121,9 +131,28 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   const [animateFlow, setAnimateFlow] = useState(true);
   const [isAddLegendModalOpen, setIsAddLegendModalOpen] = useState(false);
 
+  // Active Selected Node IDs helper
+  const activeSelectedIds = selectedNodeIds && selectedNodeIds.length > 0
+    ? selectedNodeIds
+    : selectedNodeId
+    ? [selectedNodeId]
+    : [];
+
+  // Marquee Selection Box State
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+
   // Dragging Node State
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
-  const dragStartRef = useRef<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null);
+  const dragStartRef = useRef<{
+    mouseX: number;
+    mouseY: number;
+    nodePositions: Array<{ id: string; x: number; y: number }>;
+  } | null>(null);
 
   // Pan Canvas State
   const [isPanning, setIsPanning] = useState(false);
@@ -138,7 +167,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   // Space bar key state for panning shortcut
   const [isSpacePressed, setIsSpacePressed] = useState(false);
 
-  // Handle Keyboard shortcuts (Delete key, Space key for pan)
+  // Handle Keyboard shortcuts (Delete key, Ctrl+A, Escape, Space key for pan)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -147,9 +176,25 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       if (e.code === 'Space' && !e.repeat) {
         setIsSpacePressed(true);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        const allIds = nodes.map((n) => n.id);
+        if (onSelectNodes) onSelectNodes(allIds);
+        else if (allIds.length > 0) onSelectNode(allIds[0]);
+      }
+      if (e.key === 'Escape') {
+        if (onSelectNodes) onSelectNodes([]);
+        onSelectNode(null);
+        onSelectConnection(null);
+        setWiringFrom(null);
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedNodeId) {
-          onDeleteNode(selectedNodeId);
+        if (activeSelectedIds.length > 0) {
+          if (onDeleteNodes) {
+            onDeleteNodes(activeSelectedIds);
+          } else {
+            activeSelectedIds.forEach((id) => onDeleteNode(id));
+          }
         } else if (selectedConnectionId) {
           onDeleteConnection(selectedConnectionId);
         }
@@ -168,7 +213,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedNodeId, selectedConnectionId, onDeleteNode, onDeleteConnection]);
+  }, [nodes, activeSelectedIds, selectedConnectionId, onDeleteNode, onDeleteNodes, onDeleteConnection, onSelectNode, onSelectNodes]);
 
   // Wheel Zoom Listener on Canvas Container (Scroll up = Zoom In, Scroll down = Zoom Out)
   useEffect(() => {
@@ -202,9 +247,9 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
     };
   };
 
-  // Window-level Mouse Move / Mouse Up listeners when panning or dragging nodes
+  // Window-level Mouse Move / Mouse Up listeners when panning, marquee selecting, or dragging nodes
   useEffect(() => {
-    if (!isPanning && !draggingNodeId) return;
+    if (!isPanning && !draggingNodeId && !selectionBox) return;
 
     const handleWindowMouseMove = (e: MouseEvent) => {
       if (isPanning && panStartRef.current) {
@@ -214,12 +259,37 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           x: panStartRef.current.panX + dx,
           y: panStartRef.current.panY + dy,
         });
+      } else if (selectionBox && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const currentX = (e.clientX - rect.left - pan.x) / zoom;
+        const currentY = (e.clientY - rect.top - pan.y) / zoom;
+        setSelectionBox((prev) => (prev ? { ...prev, currentX, currentY } : null));
+
+        const minX = Math.min(selectionBox.startX, currentX);
+        const maxX = Math.max(selectionBox.startX, currentX);
+        const minY = Math.min(selectionBox.startY, currentY);
+        const maxY = Math.max(selectionBox.startY, currentY);
+
+        const cardWidth = viewStyle === 'card' ? 220 : 160;
+        const cardHeight = viewStyle === 'card' ? 140 : 80;
+
+        const intersectedIds = nodes
+          .filter((n) => n.x < maxX && n.x + cardWidth > minX && n.y < maxY && n.y + cardHeight > minY)
+          .map((n) => n.id);
+
+        if (onSelectNodes) {
+          onSelectNodes(intersectedIds);
+        } else if (intersectedIds.length > 0) {
+          onSelectNode(intersectedIds[0]);
+        }
       } else if (draggingNodeId && dragStartRef.current) {
         const dx = (e.clientX - dragStartRef.current.mouseX) / zoom;
         const dy = (e.clientY - dragStartRef.current.mouseY) / zoom;
-        const newX = Math.max(20, Math.round((dragStartRef.current.nodeX + dx) / 10) * 10);
-        const newY = Math.max(20, Math.round((dragStartRef.current.nodeY + dy) / 10) * 10);
-        onMoveNode(draggingNodeId, newX, newY);
+        dragStartRef.current.nodePositions.forEach((pos) => {
+          const newX = Math.max(20, Math.round((pos.x + dx) / 10) * 10);
+          const newY = Math.max(20, Math.round((pos.y + dy) / 10) * 10);
+          onMoveNode(pos.id, newX, newY);
+        });
       }
     };
 
@@ -227,6 +297,9 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       if (isPanning) {
         setIsPanning(false);
         panStartRef.current = null;
+      }
+      if (selectionBox) {
+        setSelectionBox(null);
       }
       if (draggingNodeId) {
         setDraggingNodeId(null);
@@ -241,7 +314,19 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [isPanning, draggingNodeId, zoom, pan, onMoveNode, onFinalizeMoveNode]);
+  }, [
+    isPanning,
+    draggingNodeId,
+    selectionBox,
+    zoom,
+    pan,
+    nodes,
+    viewStyle,
+    onMoveNode,
+    onFinalizeMoveNode,
+    onSelectNode,
+    onSelectNodes,
+  ]);
 
   // Mouse Move inside Canvas for wiring preview coordinate
   const handleMouseMove = useCallback(
@@ -262,50 +347,85 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       dragStartRef.current = null;
       onFinalizeMoveNode();
     }
+    if (selectionBox) {
+      setSelectionBox(null);
+    }
     if (isPanning) {
       setIsPanning(false);
       panStartRef.current = null;
     }
-  }, [draggingNodeId, isPanning, onFinalizeMoveNode]);
+  }, [draggingNodeId, selectionBox, isPanning, onFinalizeMoveNode]);
 
   // Start Node Dragging
   const handleNodeMouseDown = (e: React.MouseEvent, node: EquipmentNode) => {
-    // If middle click, hand tool active, or space key held -> perform pan instead of node drag
     if (e.button === 1 || toolMode === 'pan' || isSpacePressed) {
       e.stopPropagation();
       startPanning(e);
       return;
     }
 
-    if (e.button !== 0) return; // Left click only for node move
+    if (e.button !== 0) return;
 
     e.stopPropagation();
-    onSelectNode(node.id);
+
+    let nextSelectedIds: string[];
+
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      if (activeSelectedIds.includes(node.id)) {
+        nextSelectedIds = activeSelectedIds.filter((id) => id !== node.id);
+      } else {
+        nextSelectedIds = [...activeSelectedIds, node.id];
+      }
+    } else {
+      if (activeSelectedIds.includes(node.id)) {
+        nextSelectedIds = activeSelectedIds;
+      } else {
+        nextSelectedIds = [node.id];
+      }
+    }
+
+    if (onSelectNodes) {
+      onSelectNodes(nextSelectedIds);
+    } else {
+      onSelectNode(nextSelectedIds[0] || null);
+    }
     onSelectConnection(null);
 
+    const dragTargetIds = nextSelectedIds.includes(node.id) ? nextSelectedIds : [node.id];
     setDraggingNodeId(node.id);
     dragStartRef.current = {
       mouseX: e.clientX,
       mouseY: e.clientY,
-      nodeX: node.x,
-      nodeY: node.y,
+      nodePositions: nodes
+        .filter((n) => dragTargetIds.includes(n.id))
+        .map((n) => ({ id: n.id, x: n.x, y: n.y })),
     };
   };
 
-  // Start Canvas Pan or Deselect
+  // Start Canvas Pan or Selection Box
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    // Middle click (scroll click) or Hand tool mode or Space key -> Pan canvas
     if (e.button === 1 || toolMode === 'pan' || isSpacePressed) {
       startPanning(e);
       return;
     }
 
-    if (e.target === containerRef.current || (e.target as HTMLElement).tagName === 'svg') {
-      onSelectNode(null);
-      onSelectConnection(null);
-      setWiringFrom(null);
+    const targetEl = e.target as HTMLElement;
+    const isCanvasBg = targetEl === containerRef.current || targetEl.tagName === 'svg' || targetEl.classList.contains('canvas-bg');
 
-      if (e.button === 0) {
+    if (isCanvasBg && e.button === 0) {
+      if (toolMode === 'select' && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const startX = (e.clientX - rect.left - pan.x) / zoom;
+        const startY = (e.clientY - rect.top - pan.y) / zoom;
+        setSelectionBox({ startX, startY, currentX: startX, currentY: startY });
+
+        if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          if (onSelectNodes) onSelectNodes([]);
+          else onSelectNode(null);
+          onSelectConnection(null);
+          setWiringFrom(null);
+        }
+      } else {
         startPanning(e);
       }
     }
@@ -912,7 +1032,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
 
           {/* Equipment Nodes Layer */}
           {nodes.map((node) => {
-            const isSelected = selectedNodeId === node.id;
+            const isSelected = activeSelectedIds.includes(node.id);
             const ports = EQUIPMENT_PORTS[node.type] || [];
             const cardWidth = viewStyle === 'card' ? 220 : 160;
             const cardHeight = viewStyle === 'card' ? 140 : 80;
@@ -928,10 +1048,16 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                 }}
                 className={`absolute rounded-md bg-[#ffffff] transition-shadow duration-150 border-2 ${
                   isSelected
-                    ? 'border-[#003d9b] shadow-lg ring-2 ring-[#003d9b]/20 z-30'
+                    ? 'border-[#003d9b] shadow-lg ring-2 ring-[#003d9b]/30 z-30'
                     : 'border-[#c3c6d6] hover:border-[#003d9b] shadow-xs z-10'
                 }`}
               >
+                {/* Multi-selection Checkmark Badge */}
+                {isSelected && activeSelectedIds.length > 1 && (
+                  <div className="absolute -top-2 -right-2 bg-[#003d9b] text-white p-0.5 rounded-full shadow-md z-40 border border-white">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                )}
                 {/* Node View: Detailed BIM Card */}
                 {viewStyle === 'card' ? (
                   <div className="h-full flex flex-col p-2.5 overflow-hidden">
@@ -1034,7 +1160,71 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
               </div>
             );
           })}
+
+          {/* Marquee Selection Box Overlay */}
+          {selectionBox && (
+            <div
+              style={{
+                left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
+                top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
+                width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
+                height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
+              }}
+              className="absolute border-2 border-[#003d9b] bg-[#003d9b]/15 rounded-xs pointer-events-none z-40 shadow-xs"
+            />
+          )}
         </div>
+
+        {/* Floating Multi-Selection Floating Action Bar */}
+        {activeSelectedIds.length > 1 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#ffffff] border-2 border-[#003d9b] shadow-2xl rounded-xl px-4 py-2.5 flex items-center gap-3 animate-fade-in text-xs font-semibold">
+            <div className="flex items-center gap-2 text-[#003d9b] font-bold">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#003d9b] animate-ping shrink-0" />
+              <span>{activeSelectedIds.length} Components Selected</span>
+            </div>
+            <div className="h-4 w-px bg-[#c3c6d6]" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-[#737685] font-bold uppercase">Status:</span>
+              <select
+                onChange={(e) => {
+                  if (e.target.value && onBatchUpdateNodes) {
+                    onBatchUpdateNodes(activeSelectedIds, { status: e.target.value as any });
+                  }
+                }}
+                defaultValue=""
+                className="bg-[#f1f4f8] border border-[#c3c6d6] rounded px-2 py-1 text-[11px] font-bold text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
+              >
+                <option value="" disabled>Set Status...</option>
+                <option value="installed">{t('statusInstalled')}</option>
+                <option value="pending">{t('statusPending')}</option>
+                <option value="planned">{t('statusPlanned')}</option>
+                <option value="maintenance">{t('statusMaintenance')}</option>
+              </select>
+            </div>
+            <div className="h-4 w-px bg-[#c3c6d6]" />
+            <button
+              onClick={() => {
+                if (onDeleteNodes) onDeleteNodes(activeSelectedIds);
+                else activeSelectedIds.forEach((id) => onDeleteNode(id));
+              }}
+              className="px-2.5 py-1.5 bg-[#ffdad6] hover:bg-[#ba1a1a] text-[#ba1a1a] hover:text-white rounded font-bold flex items-center gap-1 transition-all"
+              title="Delete all selected components (Delete key)"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete ({activeSelectedIds.length})</span>
+            </button>
+            <button
+              onClick={() => {
+                if (onSelectNodes) onSelectNodes([]);
+                else onSelectNode(null);
+              }}
+              className="p-1 hover:bg-[#f1f4f8] rounded text-[#737685] hover:text-[#181c1f]"
+              title="Clear selection (Escape key)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Bottom Panel: Connection Legend & Component Engineering Notes */}

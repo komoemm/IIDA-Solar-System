@@ -32,15 +32,21 @@ export default function App() {
     designNotes,
     selectedNode,
     selectedNodeId,
+    selectedNodes,
+    selectedNodeIds,
     selectedConnection,
     selectedConnectionId,
     setSelectedNodeId,
+    setSelectedNodeIds,
     setSelectedConnectionId,
     addNode,
     moveNode,
+    moveNodes,
     finalizeMoveNode,
     updateNode,
+    batchUpdateNodes,
     deleteNode,
+    deleteNodes,
     addConnection,
     deleteConnection,
     autoLayout,
@@ -233,11 +239,24 @@ export default function App() {
     });
   };
 
-  const handleSaveCatalogItem = (newItem: EquipmentLibraryItem) => {
+  const handleSaveCatalogItem = (
+    newItem: EquipmentLibraryItem,
+    originalItem?: EquipmentLibraryItem | null
+  ) => {
     setCatalogItems((prev) => {
-      const index = prev.findIndex(
-        (item) => item.type === newItem.type && item.defaultName === newItem.defaultName
-      );
+      let index = -1;
+      if (originalItem) {
+        index = prev.findIndex(
+          (item) =>
+            item === originalItem ||
+            (item.type === originalItem.type && item.defaultName === originalItem.defaultName)
+        );
+      }
+      if (index < 0) {
+        index = prev.findIndex(
+          (item) => item.type === newItem.type && item.defaultName === newItem.defaultName
+        );
+      }
       if (index >= 0) {
         const copy = [...prev];
         copy[index] = newItem;
@@ -245,6 +264,37 @@ export default function App() {
       }
       return [newItem, ...prev];
     });
+
+    // Also synchronize equipment nodes on diagram canvas & inventory
+    nodes.forEach((node) => {
+      const isMatch =
+        (originalItem && (node.imageUrl === originalItem.imageUrl || node.name === originalItem.defaultName)) ||
+        node.type === newItem.type ||
+        node.name.toLowerCase().includes(newItem.defaultName.toLowerCase());
+
+      if (isMatch) {
+        updateNode(node.id, {
+          imageUrl: newItem.imageUrl,
+          ...(newItem.defaultManufacturer ? { manufacturer: newItem.defaultManufacturer } : {}),
+          ...(newItem.defaultModel ? { model: newItem.defaultModel } : {}),
+          ...(newItem.defaultCapacity ? { capacity: newItem.defaultCapacity } : {}),
+          ...(newItem.defaultVoltage ? { voltage: newItem.defaultVoltage } : {}),
+          ...(newItem.specSheetUrl ? { specSheetUrl: newItem.specSheetUrl } : {}),
+        });
+      }
+    });
+  };
+
+  const handleSelectEquipmentFromCatalog = (item: EquipmentLibraryItem) => {
+    const existingNode = nodes.find((n) => n.type === item.type);
+    if (existingNode) {
+      setSelectedNodeId(existingNode.id);
+      setSelectedConnectionId(null);
+      setShowProperties(true);
+      setActiveTab('canvas');
+    } else {
+      handleAddEquipmentFromCatalog(item);
+    }
   };
 
   const handleAddEquipmentFromCatalog = (item: EquipmentLibraryItem) => {
@@ -256,7 +306,12 @@ export default function App() {
       manufacturer: item.defaultManufacturer,
       model: item.defaultModel,
       imageUrl: item.imageUrl,
+      specSheetUrl: item.specSheetUrl || '',
+      notes: item.description || '',
     });
+    setSelectedNodeId(newNode.id);
+    setSelectedConnectionId(null);
+    setShowProperties(true);
     setActiveTab('canvas');
   };
 
@@ -306,9 +361,13 @@ export default function App() {
             {showPalette && (
               <EquipmentPalette
                 onAddEquipment={(type) => {
-                  addNode(type);
+                  const newNode = addNode(type);
+                  setSelectedNodeId(newNode.id);
+                  setSelectedConnectionId(null);
+                  setShowProperties(true);
                 }}
                 onAddEquipmentFromCatalog={handleAddEquipmentFromCatalog}
+                onSelectItem={handleSelectEquipmentFromCatalog}
                 catalogItems={catalogItems}
                 onClose={() => setShowPalette(false)}
               />
@@ -319,6 +378,7 @@ export default function App() {
               nodes={nodes}
               connections={connections}
               selectedNodeId={selectedNodeId}
+              selectedNodeIds={selectedNodeIds}
               selectedConnectionId={selectedConnectionId}
               legendTypes={legendTypes}
               activeWiringType={activeWiringType}
@@ -332,6 +392,13 @@ export default function App() {
                   setShowProperties(true);
                 }
               }}
+              onSelectNodes={(ids) => {
+                setSelectedNodeIds(ids);
+                if (ids.length > 0) {
+                  setSelectedConnectionId(null);
+                  setShowProperties(true);
+                }
+              }}
               onSelectConnection={(id) => {
                 setSelectedConnectionId(id);
                 if (id) {
@@ -340,10 +407,13 @@ export default function App() {
                 }
               }}
               onMoveNode={moveNode}
+              onMoveNodes={moveNodes}
               onFinalizeMoveNode={finalizeMoveNode}
               onAddConnection={addConnection}
               onUpdateConnection={updateConnection}
               onDeleteNode={deleteNode}
+              onDeleteNodes={deleteNodes}
+              onBatchUpdateNodes={batchUpdateNodes}
               onDeleteConnection={deleteConnection}
               onAddEquipmentFromDrop={(type, x, y) => {
                 addNode(type, x, y);
@@ -364,16 +434,23 @@ export default function App() {
             {showProperties && (
               <PropertiesPanel
                 node={selectedNode}
+                selectedNodes={selectedNodes}
+                selectedNodeIds={selectedNodeIds}
                 selectedConnection={selectedConnection}
                 connections={connections}
                 allNodes={nodes}
                 legendTypes={legendTypes}
                 onUpdateNode={updateNode}
+                onBatchUpdateNodes={batchUpdateNodes}
                 onUpdateConnection={updateConnection}
                 onDeleteNode={deleteNode}
+                onDeleteNodes={deleteNodes}
+                onSelectNode={setSelectedNodeId}
+                onSelectNodes={setSelectedNodeIds}
                 onDeleteConnection={deleteConnection}
                 onClose={() => {
                   setSelectedNodeId(null);
+                  setSelectedNodeIds([]);
                   setSelectedConnectionId(null);
                   setShowProperties(false);
                 }}
@@ -386,9 +463,11 @@ export default function App() {
         {activeTab === 'inventory' && (
           <EquipmentList
             nodes={nodes}
-            onSelectNodeForEdit={(id) => {
+            onUpdateNode={updateNode}
+            onNavigateToCanvas={(id) => {
               setSelectedNodeId(id);
               setActiveTab('canvas');
+              setShowProperties(true);
             }}
             onDeleteNode={deleteNode}
             onOpenAddModal={() => setIsAddModalOpen(true)}

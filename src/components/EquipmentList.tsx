@@ -10,26 +10,36 @@ import {
   ExternalLink,
   Edit2,
   Filter,
+  Sliders,
+  Maximize2,
 } from 'lucide-react';
 import { EquipmentNode, EquipmentType } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { EditEquipmentModal } from './EditEquipmentModal';
 
 interface EquipmentListProps {
   nodes: EquipmentNode[];
-  onSelectNodeForEdit: (id: string) => void;
+  onSelectNodeForEdit?: (id: string) => void;
+  onUpdateNode?: (id: string, updates: Partial<EquipmentNode>) => void;
   onDeleteNode: (id: string) => void;
   onOpenAddModal: () => void;
+  onNavigateToCanvas?: (id: string) => void;
 }
 
 export const EquipmentList: React.FC<EquipmentListProps> = ({
   nodes,
   onSelectNodeForEdit,
+  onUpdateNode,
   onDeleteNode,
   onOpenAddModal,
+  onNavigateToCanvas,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const { language, t } = useLanguage();
+
+  const editingNode = nodes.find((n) => n.id === editingNodeId) || null;
 
   const getStatusText = (status: string) => {
     switch (status) {
@@ -280,12 +290,22 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => onSelectNodeForEdit(node.id)}
-                            className="p-1.5 text-[#003d9b] hover:bg-[#dae2ff] rounded transition-colors"
-                            title="Edit Properties"
+                            onClick={() => setEditingNodeId(node.id)}
+                            className="p-1.5 text-[#003d9b] hover:bg-[#dae2ff] rounded transition-colors flex items-center gap-1 font-bold text-xs"
+                            title="Edit Component Specifications & Properties"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
+
+                          {onNavigateToCanvas && (
+                            <button
+                              onClick={() => onNavigateToCanvas(node.id)}
+                              className="p-1.5 text-[#434654] hover:bg-[#ebeef2] rounded transition-colors"
+                              title="Locate & Highlight on Diagram Canvas"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {node.specSheetUrl && (
                             <a
@@ -316,6 +336,27 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Edit Component Specifications Modal */}
+      {editingNode && (
+        <EditEquipmentModal
+          isOpen={!!editingNode}
+          node={editingNode}
+          onClose={() => setEditingNodeId(null)}
+          onSave={(id, updates) => {
+            if (onUpdateNode) {
+              onUpdateNode(id, updates);
+            }
+          }}
+          onNavigateToCanvas={(id) => {
+            if (onNavigateToCanvas) {
+              onNavigateToCanvas(id);
+            } else if (onSelectNodeForEdit) {
+              onSelectNodeForEdit(id);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

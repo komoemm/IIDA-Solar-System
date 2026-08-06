@@ -19,7 +19,7 @@ interface ReferenceGalleryProps {
   onAddEquipment: (type: EquipmentType) => void;
   onAddEquipmentFromCatalog?: (item: EquipmentLibraryItem) => void;
   catalogItems?: EquipmentLibraryItem[];
-  onSaveCatalogItem?: (item: EquipmentLibraryItem) => void;
+  onSaveCatalogItem?: (item: EquipmentLibraryItem, originalItem?: EquipmentLibraryItem | null) => void;
 }
 
 const EQUIPMENT_TYPE_OPTIONS: { type: EquipmentType; label: string }[] = [
@@ -120,6 +120,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanImageUrl = formImageUrl.trim();
     const savedItem: EquipmentLibraryItem = {
       type: formType,
       defaultName: formName.trim() || 'Custom Equipment',
@@ -129,12 +130,15 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
       defaultManufacturer: formManufacturer.trim() || 'Generic',
       defaultModel: formModel.trim() || 'Model-1',
       description: formDescription.trim() || 'Solar equipment reference specification.',
-      imageUrl: formImageUrl || EQUIPMENT_IMAGES[formType],
+      imageUrl: cleanImageUrl || EQUIPMENT_IMAGES[formType],
       specSheetUrl: formSpecSheetUrl.trim() || undefined,
     };
 
     if (onSaveCatalogItem) {
-      onSaveCatalogItem(savedItem);
+      onSaveCatalogItem(savedItem, editingItem);
+    }
+    if (selectedPhotoItem && editingItem && selectedPhotoItem.defaultName === editingItem.defaultName) {
+      setSelectedPhotoItem(savedItem);
     }
     setEditingItem(null);
     setIsAddingNew(false);

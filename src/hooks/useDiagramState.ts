@@ -61,7 +61,29 @@ export function useDiagramState() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
     initialState.nodes[0]?.id || 'INV-01'
   );
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>(
+    initialState.nodes[0] ? [initialState.nodes[0].id] : ['INV-01']
+  );
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+
+  // Sync selectedNodeId with selectedNodeIds
+  const handleSetSelectedNodeId = useCallback((id: string | null) => {
+    setSelectedNodeId(id);
+    if (id) {
+      setSelectedNodeIds([id]);
+    } else {
+      setSelectedNodeIds([]);
+    }
+  }, []);
+
+  const handleSetSelectedNodeIds = useCallback((ids: string[]) => {
+    setSelectedNodeIds(ids);
+    if (ids.length > 0) {
+      setSelectedNodeId(ids[0]);
+    } else {
+      setSelectedNodeId(null);
+    }
+  }, []);
 
   // Undo / Redo History Stacks
   const historyRef = useRef<DiagramState[]>([]);
@@ -152,6 +174,37 @@ export function useDiagramState() {
       const existingCount = nodes.filter((n) => n.type === type).length + 1;
       const newId = `${prefix}-0${existingCount}`;
 
+      const colMap: Record<EquipmentType, number> = {
+        pv_array: 80,
+        generator: 80,
+        combiner_box: 360,
+        inverter: 640,
+        battery: 640,
+        ac_panel: 920,
+        inverter_load_panel: 920,
+        grid: 1200,
+        non_inverter_load_panel: 1200,
+      };
+
+      let defaultX = colMap[type] || 600;
+      let defaultY = 100;
+
+      if (customX !== undefined) {
+        defaultX = customX;
+      }
+
+      if (customY !== undefined) {
+        defaultY = customY;
+      } else if (customX === undefined) {
+        const nodesInCol = nodes.filter((n) => Math.abs(n.x - defaultX) < 150);
+        if (nodesInCol.length > 0) {
+          const maxY = Math.max(...nodesInCol.map((n) => n.y));
+          defaultY = maxY + 220;
+        } else {
+          defaultY = 100;
+        }
+      }
+
       const newNode: EquipmentNode = {
         id: newId,
         name: nameOverride || libraryPreset?.defaultName || `${type.replace('_', ' ').toUpperCase()} #${existingCount}`,
@@ -163,8 +216,8 @@ export function useDiagramState() {
         notes: libraryPreset?.description || 'Newly added equipment node.',
         imageUrl: libraryPreset?.imageUrl || EQUIPMENT_IMAGES[type],
         specSheetUrl: libraryPreset?.specSheetUrl || '',
-        x: customX ?? 300 + (nodes.length % 5) * 40,
-        y: customY ?? 200 + (nodes.length % 5) * 40,
+        x: defaultX,
+        y: defaultY,
         status: 'planned',
         manufacturer: libraryPreset?.defaultManufacturer || 'Generic Solar',
         model: libraryPreset?.defaultModel || 'Model-X',
@@ -191,6 +244,27 @@ export function useDiagramState() {
     []
   );
 
+  // Move Multiple Nodes Position by Delta
+  const moveNodes = useCallback(
+    (ids: string[], deltaX: number, deltaY: number) => {
+      if (!ids.length) return;
+      const idSet = new Set(ids);
+      setNodes((prevNodes) => {
+        return prevNodes.map((node) => {
+          if (idSet.has(node.id)) {
+            return {
+              ...node,
+              x: Math.max(20, node.x + deltaX),
+              y: Math.max(20, node.y + deltaY),
+            };
+          }
+          return node;
+        });
+      });
+    },
+    []
+  );
+
   // Finalize Node Move for history stack
   const finalizeMoveNode = useCallback(() => {
     saveStateToHistory(nodes, connections, metadata, designNotes);
@@ -206,6 +280,18 @@ export function useDiagramState() {
     [nodes, connections, metadata, designNotes, saveStateToHistory]
   );
 
+  // Batch Update Multiple Nodes
+  const batchUpdateNodes = useCallback(
+    (ids: string[], updates: Partial<EquipmentNode>) => {
+      if (!ids.length) return;
+      const idSet = new Set(ids);
+      const nextNodes = nodes.map((n) => (idSet.has(n.id) ? { ...n, ...updates } : n));
+      setNodes(nextNodes);
+      saveStateToHistory(nextNodes, connections, metadata, designNotes);
+    },
+    [nodes, connections, metadata, designNotes, saveStateToHistory]
+  );
+
   // Delete Node
   const deleteNode = useCallback(
     (id: string) => {
@@ -214,6 +300,23 @@ export function useDiagramState() {
       setNodes(nextNodes);
       setConnections(nextConns);
       if (selectedNodeId === id) setSelectedNodeId(null);
+      setSelectedNodeIds((prev) => prev.filter((i) => i !== id));
+      saveStateToHistory(nextNodes, nextConns, metadata, designNotes);
+    },
+    [nodes, connections, selectedNodeId, metadata, designNotes, saveStateToHistory]
+  );
+
+  // Delete Multiple Nodes
+  const deleteNodes = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+      const idSet = new Set(ids);
+      const nextNodes = nodes.filter((n) => !idSet.has(n.id));
+      const nextConns = connections.filter((c) => !idSet.has(c.fromNodeId) && !idSet.has(c.toNodeId));
+      setNodes(nextNodes);
+      setConnections(nextConns);
+      if (selectedNodeId && idSet.has(selectedNodeId)) setSelectedNodeId(null);
+      setSelectedNodeIds((prev) => prev.filter((id) => !idSet.has(id)));
       saveStateToHistory(nextNodes, nextConns, metadata, designNotes);
     },
     [nodes, connections, selectedNodeId, metadata, designNotes, saveStateToHistory]
@@ -382,6 +485,7 @@ export function useDiagramState() {
   );
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
+  const selectedNodes = nodes.filter((n) => selectedNodeIds.includes(n.id));
   const selectedConnection = connections.find((c) => c.id === selectedConnectionId) || null;
 
   return {
@@ -394,15 +498,21 @@ export function useDiagramState() {
     setActiveWiringType,
     selectedNode,
     selectedNodeId,
+    selectedNodes,
+    selectedNodeIds,
     selectedConnection,
     selectedConnectionId,
-    setSelectedNodeId,
+    setSelectedNodeId: handleSetSelectedNodeId,
+    setSelectedNodeIds: handleSetSelectedNodeIds,
     setSelectedConnectionId,
     addNode,
     moveNode,
+    moveNodes,
     finalizeMoveNode,
     updateNode,
+    batchUpdateNodes,
     deleteNode,
+    deleteNodes,
     addConnection,
     updateConnection,
     deleteConnection,
