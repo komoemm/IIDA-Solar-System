@@ -11,16 +11,20 @@ import {
   MapPin,
   Tag,
   Zap,
+  Upload,
 } from 'lucide-react';
-import { EquipmentNode, Connection, PortId } from '../types';
-import { EQUIPMENT_IMAGES, EQUIPMENT_PORTS } from '../data/presetData';
+import { EquipmentNode, Connection, PortId, CustomLegendType } from '../types';
+import { EQUIPMENT_IMAGES, EQUIPMENT_PORTS, DEFAULT_LEGEND_TYPES } from '../data/presetData';
 import { useLanguage } from '../context/LanguageContext';
 
 interface PropertiesPanelProps {
   node: EquipmentNode | null;
+  selectedConnection?: Connection | null;
   connections: Connection[];
   allNodes: EquipmentNode[];
+  legendTypes?: CustomLegendType[];
   onUpdateNode: (id: string, updates: Partial<EquipmentNode>) => void;
+  onUpdateConnection?: (id: string, updates: Partial<Connection>) => void;
   onDeleteNode: (id: string) => void;
   onDeleteConnection: (connId: string) => void;
   onClose: () => void;
@@ -28,9 +32,12 @@ interface PropertiesPanelProps {
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   node,
+  selectedConnection,
   connections,
   allNodes,
+  legendTypes = DEFAULT_LEGEND_TYPES,
   onUpdateNode,
+  onUpdateConnection,
   onDeleteNode,
   onDeleteConnection,
   onClose,
@@ -45,6 +52,151 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       setCustomImageUrl(node.imageUrl);
     }
   }, [node]);
+
+  // If a connection line is selected on the canvas, display Connection Properties Panel
+  if (!node && selectedConnection) {
+    const fromNode = allNodes.find((n) => n.id === selectedConnection.fromNodeId);
+    const toNode = allNodes.find((n) => n.id === selectedConnection.toNodeId);
+
+    return (
+      <aside className="w-80 bg-[#ffffff] border-l border-[#c3c6d6] flex flex-col h-full z-10 shrink-0 shadow-xs relative">
+        {/* Connection Header */}
+        <div className="px-3.5 py-2.5 border-b border-[#c3c6d6] bg-[#f1f4f8] flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Cable className="w-4 h-4 text-[#003d9b]" />
+            <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
+              Connection Line Properties
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] transition-colors"
+            title="Close Properties"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
+          {/* Connection ID & Status */}
+          <div className="bg-[#f8fafc] border border-[#c3c6d6] rounded p-2.5 space-y-1 font-mono text-xs">
+            <div className="flex justify-between items-center text-[#737685]">
+              <span>Wire ID:</span>
+              <span className="font-bold text-[#003d9b]">{selectedConnection.id}</span>
+            </div>
+            <div className="flex justify-between items-center text-[#737685]">
+              <span>Category:</span>
+              <span className="font-bold uppercase text-[#181c1f]">{selectedConnection.type}</span>
+            </div>
+          </div>
+
+          {/* Nodes Connected */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-[#434654] block">
+              Connected Components
+            </label>
+            <div className="bg-[#f1f4f8] border border-[#c3c6d6] rounded p-2.5 text-xs space-y-2">
+              <div>
+                <span className="text-[10px] text-[#737685] uppercase block font-semibold">From Source:</span>
+                <span className="font-bold text-[#181c1f]">
+                  {fromNode ? `${fromNode.name} (${fromNode.id})` : selectedConnection.fromNodeId}
+                </span>
+                <span className="text-[10px] text-[#003d9b] font-mono block">Port: {selectedConnection.fromPort}</span>
+              </div>
+              <div className="border-t border-[#c3c6d6] pt-1.5">
+                <span className="text-[10px] text-[#737685] uppercase block font-semibold">To Destination:</span>
+                <span className="font-bold text-[#181c1f]">
+                  {toNode ? `${toNode.name} (${toNode.id})` : selectedConnection.toNodeId}
+                </span>
+                <span className="text-[10px] text-[#003d9b] font-mono block">Port: {selectedConnection.toPort}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Connection Type Switcher */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-[#434654] block">
+              Connection Line Type
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {legendTypes.map((leg) => {
+                const isCurrent = selectedConnection.type === leg.categoryKey;
+                return (
+                  <button
+                    key={leg.id}
+                    onClick={() =>
+                      onUpdateConnection &&
+                      onUpdateConnection(selectedConnection.id, {
+                        type: leg.categoryKey,
+                        color: leg.color,
+                        style: leg.style,
+                      })
+                    }
+                    className={`p-2 rounded border text-left text-xs font-semibold flex items-center gap-2 transition-all ${
+                      isCurrent
+                        ? 'border-[#003d9b] bg-[#dae2ff] text-[#003d9b] shadow-2xs'
+                        : 'border-[#c3c6d6] bg-[#f8fafc] text-[#434654] hover:bg-[#ebeef2]'
+                    }`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: leg.color }}
+                    />
+                    <span className="truncate text-[11px]">{leg.label.split(' ')[0]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Connection Line Label */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-[#434654] block">
+              Connection Label Name:
+            </label>
+            <input
+              type="text"
+              value={selectedConnection.label || ''}
+              onChange={(e) =>
+                onUpdateConnection &&
+                onUpdateConnection(selectedConnection.id, { label: e.target.value })
+              }
+              placeholder="e.g. DC Feeder Line, PV String #1"
+              className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-2.5 py-1.5 text-xs font-semibold text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
+            />
+          </div>
+
+          {/* Wire Specification / Cable Gauge */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-[#434654] block">
+              Wire Specification / Conductor Rating:
+            </label>
+            <input
+              type="text"
+              value={selectedConnection.wireSpec || ''}
+              onChange={(e) =>
+                onUpdateConnection &&
+                onUpdateConnection(selectedConnection.id, { wireSpec: e.target.value })
+              }
+              placeholder="e.g. 10 AWG USE-2, 4/0 Cu THHN, Cat6"
+              className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-2.5 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
+            />
+          </div>
+
+          {/* Delete Connection Button */}
+          <div className="pt-4 border-t border-[#ebeef2]">
+            <button
+              onClick={() => onDeleteConnection(selectedConnection.id)}
+              className="w-full py-2.5 bg-[#ba1a1a] hover:bg-[#961212] text-white rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Remove Connection Line</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   if (!node) {
     return (
@@ -104,7 +256,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Component Title & Quick Badge */}
-        <div className="bg-[#f8fafc] border border-[#c3c6d6] rounded p-3 relative">
+        <div className="bg-[#f8fafc] border border-[#c3c6d6] rounded p-3 relative space-y-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-mono font-bold text-[#003d9b] bg-[#dae2ff] px-2 py-0.5 rounded">
               ID: {node.id}
@@ -124,14 +276,33 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             </span>
           </div>
 
-          <input
-            type="text"
-            value={node.name}
-            onChange={(e) => onUpdateNode(node.id, { name: e.target.value })}
-            className="w-full font-bold text-sm text-[#181c1f] bg-transparent border-b border-transparent hover:border-[#c3c6d6] focus:border-[#003d9b] focus:bg-white px-1 py-0.5 focus:outline-none rounded transition-colors"
-            placeholder={t('labelName')}
-          />
-          <div className="text-xs text-[#434654] mt-1 px-1">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#737685] mb-0.5">
+              Equipment Label Name:
+            </label>
+            <input
+              type="text"
+              value={node.name}
+              onChange={(e) => onUpdateNode(node.id, { name: e.target.value })}
+              className="w-full font-bold text-sm text-[#181c1f] bg-white border border-[#c3c6d6] focus:border-[#003d9b] px-2 py-1 focus:outline-none rounded transition-colors shadow-2xs"
+              placeholder={t('labelName')}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#737685] mb-0.5">
+              Equipment Category:
+            </label>
+            <input
+              type="text"
+              value={node.category || ''}
+              onChange={(e) => onUpdateNode(node.id, { category: e.target.value })}
+              className="w-full font-semibold text-xs text-[#003d9b] bg-white border border-[#c3c6d6] focus:border-[#003d9b] px-2 py-1 focus:outline-none rounded transition-colors"
+              placeholder="e.g. Generation, Storage, Protection..."
+            />
+          </div>
+
+          <div className="text-[11px] text-[#434654] px-0.5">
             {node.manufacturer} {node.model}
           </div>
         </div>
@@ -181,19 +352,47 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-[#434654] mb-1">
-              Image URL:
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[11px] font-semibold text-[#434654]">
+                Reference Photo URL / Upload:
+              </label>
+              <label className="cursor-pointer text-[10px] text-[#003d9b] font-bold bg-[#dae2ff] hover:bg-[#b9cde5] px-2 py-0.5 rounded flex items-center gap-1 transition-colors">
+                <Upload className="w-3 h-3" />
+                <span>Upload File</span>
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        const result = evt.target?.result as string;
+                        if (result) handleImageUrlChange(result);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
             <input
               type="text"
               value={customImageUrl}
               onChange={(e) => handleImageUrlChange(e.target.value)}
-              placeholder="https://example.com/photo.jpg or Google Drive/Photos direct link"
+              placeholder="https://example.com/photo.jpg or upload local file"
               className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-2.5 py-1 text-xs font-mono text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
             />
-            <p className="text-[10px] text-[#737685] mt-1 leading-tight">
-              Tip: Paste any direct photo or image web link.
-            </p>
+            {/* Specs & Info Box */}
+            <div className="mt-1.5 p-2 bg-[#f1f4f8] border border-[#c3c6d6] rounded text-[10px] text-[#434654] space-y-0.5">
+              <span className="font-bold text-[#003d9b] block">Image Guidelines for Web App Performance:</span>
+              <ul className="list-disc list-inside text-[9.5px] space-y-0.5 text-[#434654]">
+                <li><strong>Formats:</strong> JPG, PNG, WebP, SVG</li>
+                <li><strong>Size:</strong> Under 2 MB (fast loading)</li>
+                <li><strong>Ratio:</strong> 1:1 Square or 4:3 Aspect Ratio</li>
+              </ul>
+            </div>
           </div>
         </section>
 

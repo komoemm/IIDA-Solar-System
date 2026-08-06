@@ -17,6 +17,7 @@ export interface EquipmentNode {
   id: string;
   name: string;
   type: EquipmentType;
+  category?: string;
   capacity: string;
   voltage: string;
   location: string;
@@ -48,9 +49,21 @@ export interface Connection {
   fromPort: PortId;
   toNodeId: string;
   toPort: PortId;
-  type: ConnectionCategory;
+  type: ConnectionCategory | string;
   label?: string;
   voltageRating?: string;
+  wireSpec?: string;
+  color?: string;
+  style?: 'solid' | 'dashed' | 'dotted';
+}
+
+export interface CustomLegendType {
+  id: string;
+  label: string;
+  categoryKey: ConnectionCategory | string;
+  color: string;
+  style: 'solid' | 'dashed' | 'dotted';
+  isCustom?: boolean;
 }
 
 export interface ProjectMetadata {
@@ -78,13 +91,13 @@ export interface DiagramState {
 export interface EquipmentLibraryItem {
   type: EquipmentType;
   defaultName: string;
-  category: 'Generation' | 'Conversion' | 'Storage' | 'Distribution' | 'Loads';
+  category: string;
   defaultCapacity: string;
   defaultVoltage: string;
   defaultManufacturer: string;
   defaultModel: string;
   imageUrl: string;
-  specSheetUrl: string;
+  specSheetUrl?: string;
   description: string;
-  iconName: string;
+  iconName?: string;
 }

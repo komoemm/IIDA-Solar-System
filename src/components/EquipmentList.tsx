@@ -64,9 +64,13 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
       n.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       n.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       n.manufacturer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      n.location.toLowerCase().includes(searchTerm.toLowerCase());
+      n.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (n.category && n.category.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesType = filterType === 'all' || n.type === filterType;
+    const matchesType =
+      filterType === 'all' ||
+      n.type === filterType ||
+      (n.category && n.category.toLowerCase() === filterType.toLowerCase());
     return matchesSearch && matchesType;
   });
 
@@ -231,12 +235,17 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
                         {node.id}
                       </td>
 
-                      <td className="py-2.5 px-4 font-semibold text-[#181c1f]">
-                        {node.name}
+                      <td className="py-2.5 px-4">
+                        <div className="font-semibold text-[#181c1f]">{node.name}</div>
+                        {node.category && (
+                          <span className="inline-block mt-0.5 text-[9px] font-bold uppercase tracking-wider bg-[#dae2ff] text-[#003d9b] px-1.5 py-0.2 rounded">
+                            {node.category}
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-2.5 px-4 text-[#434654] uppercase text-[10px] font-bold">
-                        {node.type.replace('_', ' ')}
+                        <div>{node.type.replace('_', ' ')}</div>
                       </td>
 
                       <td className="py-2.5 px-4 text-[#181c1f]">

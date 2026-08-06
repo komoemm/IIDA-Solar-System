@@ -24,6 +24,11 @@ import {
   Sliders,
   Eye,
   EyeOff,
+  Plus,
+  Cable,
+  CheckCircle2,
+  Edit3,
+  FileText,
 } from 'lucide-react';
 import {
   EquipmentNode,
@@ -31,15 +36,22 @@ import {
   PortId,
   ConnectionCategory,
   EquipmentType,
+  CustomLegendType,
 } from '../types';
-import { EQUIPMENT_PORTS } from '../data/presetData';
+import { EQUIPMENT_PORTS, DEFAULT_LEGEND_TYPES } from '../data/presetData';
 import { useLanguage } from '../context/LanguageContext';
+import { AddLegendModal } from './AddLegendModal';
 
 interface DiagramCanvasProps {
   nodes: EquipmentNode[];
   connections: Connection[];
   selectedNodeId: string | null;
   selectedConnectionId: string | null;
+  legendTypes?: CustomLegendType[];
+  activeWiringType?: string;
+  onSelectActiveWiringType?: (type: string) => void;
+  onAddCustomLegendType?: (legend: CustomLegendType) => void;
+  onDeleteCustomLegendType?: (id: string) => void;
   onSelectNode: (id: string | null) => void;
   onSelectConnection: (id: string | null) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
@@ -49,8 +61,9 @@ interface DiagramCanvasProps {
     fromPort: PortId,
     toNodeId: string,
     toPort: PortId,
-    type: ConnectionCategory
+    type: ConnectionCategory | string
   ) => void;
+  onUpdateConnection?: (id: string, updates: Partial<Connection>) => void;
   onDeleteNode: (id: string) => void;
   onDeleteConnection: (id: string) => void;
   onAddEquipmentFromDrop: (type: EquipmentType, x: number, y: number) => void;
@@ -73,11 +86,17 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   connections,
   selectedNodeId,
   selectedConnectionId,
+  legendTypes = DEFAULT_LEGEND_TYPES,
+  activeWiringType = 'dc',
+  onSelectActiveWiringType,
+  onAddCustomLegendType,
+  onDeleteCustomLegendType,
   onSelectNode,
   onSelectConnection,
   onMoveNode,
   onFinalizeMoveNode,
   onAddConnection,
+  onUpdateConnection,
   onDeleteNode,
   onDeleteConnection,
   onAddEquipmentFromDrop,
@@ -100,6 +119,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   const [viewStyle, setViewStyle] = useState<'card' | 'cad'>('card');
   const [showPhotos, setShowPhotos] = useState(true);
   const [animateFlow, setAnimateFlow] = useState(true);
+  const [isAddLegendModalOpen, setIsAddLegendModalOpen] = useState(false);
 
   // Dragging Node State
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
@@ -115,11 +135,17 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Handle Keyboard shortcuts (Delete key)
+  // Space bar key state for panning shortcut
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+  // Handle Keyboard shortcuts (Delete key, Space key for pan)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
+      }
+      if (e.code === 'Space' && !e.repeat) {
+        setIsSpacePressed(true);
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedNodeId) {
@@ -129,30 +155,58 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
         }
       }
     };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [selectedNodeId, selectedConnectionId, onDeleteNode, onDeleteConnection]);
 
-  // Mouse Move on Canvas
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const canvasMouseX = (e.clientX - rect.left - pan.x) / zoom;
-      const canvasMouseY = (e.clientY - rect.top - pan.y) / zoom;
+  // Wheel Zoom Listener on Canvas Container (Scroll up = Zoom In, Scroll down = Zoom Out)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-      setMousePos({ x: canvasMouseX, y: canvasMouseY });
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      setZoom((prevZoom) => {
+        const nextZoom = Math.min(2.5, Math.max(0.3, +(prevZoom * zoomFactor).toFixed(2)));
+        return nextZoom;
+      });
+    };
 
-      // Node Dragging
-      if (draggingNodeId && dragStartRef.current) {
-        const dx = (e.clientX - dragStartRef.current.mouseX) / zoom;
-        const dy = (e.clientY - dragStartRef.current.mouseY) / zoom;
-        const newX = Math.max(20, Math.round((dragStartRef.current.nodeX + dx) / 10) * 10);
-        const newY = Math.max(20, Math.round((dragStartRef.current.nodeY + dy) / 10) * 10);
-        onMoveNode(draggingNodeId, newX, newY);
-      }
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
-      // Canvas Panning
+  // Helper to initiate Canvas Panning
+  const startPanning = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsPanning(true);
+    panStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
+  };
+
+  // Window-level Mouse Move / Mouse Up listeners when panning or dragging nodes
+  useEffect(() => {
+    if (!isPanning && !draggingNodeId) return;
+
+    const handleWindowMouseMove = (e: MouseEvent) => {
       if (isPanning && panStartRef.current) {
         const dx = e.clientX - panStartRef.current.mouseX;
         const dy = e.clientY - panStartRef.current.mouseY;
@@ -160,9 +214,45 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           x: panStartRef.current.panX + dx,
           y: panStartRef.current.panY + dy,
         });
+      } else if (draggingNodeId && dragStartRef.current) {
+        const dx = (e.clientX - dragStartRef.current.mouseX) / zoom;
+        const dy = (e.clientY - dragStartRef.current.mouseY) / zoom;
+        const newX = Math.max(20, Math.round((dragStartRef.current.nodeX + dx) / 10) * 10);
+        const newY = Math.max(20, Math.round((dragStartRef.current.nodeY + dy) / 10) * 10);
+        onMoveNode(draggingNodeId, newX, newY);
       }
+    };
+
+    const handleWindowMouseUp = () => {
+      if (isPanning) {
+        setIsPanning(false);
+        panStartRef.current = null;
+      }
+      if (draggingNodeId) {
+        setDraggingNodeId(null);
+        dragStartRef.current = null;
+        onFinalizeMoveNode();
+      }
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [isPanning, draggingNodeId, zoom, pan, onMoveNode, onFinalizeMoveNode]);
+
+  // Mouse Move inside Canvas for wiring preview coordinate
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const canvasMouseX = (e.clientX - rect.left - pan.x) / zoom;
+      const canvasMouseY = (e.clientY - rect.top - pan.y) / zoom;
+      setMousePos({ x: canvasMouseX, y: canvasMouseY });
     },
-    [draggingNodeId, isPanning, zoom, pan, onMoveNode]
+    [pan, zoom]
   );
 
   // Mouse Up on Canvas
@@ -180,7 +270,15 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
 
   // Start Node Dragging
   const handleNodeMouseDown = (e: React.MouseEvent, node: EquipmentNode) => {
-    if (toolMode === 'pan') return;
+    // If middle click, hand tool active, or space key held -> perform pan instead of node drag
+    if (e.button === 1 || toolMode === 'pan' || isSpacePressed) {
+      e.stopPropagation();
+      startPanning(e);
+      return;
+    }
+
+    if (e.button !== 0) return; // Left click only for node move
+
     e.stopPropagation();
     onSelectNode(node.id);
     onSelectConnection(null);
@@ -194,21 +292,21 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
     };
   };
 
-  // Start Canvas Pan
+  // Start Canvas Pan or Deselect
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    // Middle click (scroll click) or Hand tool mode or Space key -> Pan canvas
+    if (e.button === 1 || toolMode === 'pan' || isSpacePressed) {
+      startPanning(e);
+      return;
+    }
+
     if (e.target === containerRef.current || (e.target as HTMLElement).tagName === 'svg') {
       onSelectNode(null);
       onSelectConnection(null);
       setWiringFrom(null);
 
-      if (toolMode === 'pan' || e.button === 1 || e.spaceKey) {
-        setIsPanning(true);
-        panStartRef.current = {
-          mouseX: e.clientX,
-          mouseY: e.clientY,
-          panX: pan.x,
-          panY: pan.y,
-        };
+      if (e.button === 0) {
+        startPanning(e);
       }
     }
   };
@@ -253,7 +351,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           wiringFrom.portId,
           node.id,
           portId,
-          wiringFrom.category
+          activeWiringType || wiringFrom.category
         );
       }
       setWiringFrom(null);
@@ -568,27 +666,39 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
               const p2 = getPortCoordinates(toNode, toPortDef.position);
 
               const midX = (p1.x + p2.x) / 2;
+              const midY = (p1.y + p2.y) / 2;
               const pathD = `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`;
 
+              const legendMatch = legendTypes.find(
+                (l) => l.categoryKey === conn.type || l.id === conn.type
+              );
               const strokeColor =
-                conn.type === 'dc'
+                conn.color ||
+                legendMatch?.color ||
+                (conn.type === 'dc'
                   ? '#0052cc'
                   : conn.type === 'ac'
                   ? '#334155'
                   : conn.type === 'comms'
                   ? '#ea580c'
-                  : '#16a34a';
+                  : conn.type === 'ground'
+                  ? '#16a34a'
+                  : '#9333ea');
+
+              const lineStyle = conn.style || legendMatch?.style || (conn.type === 'comms' || conn.type === 'ground' ? 'dashed' : 'solid');
+              const strokeDasharray =
+                lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : 'none';
 
               const isSelected = selectedConnectionId === conn.id;
 
               return (
                 <g key={conn.id} className="cursor-pointer pointer-events-auto">
-                  {/* Outer Click Area */}
+                  {/* Outer Click Hotspot Area */}
                   <path
                     d={pathD}
                     fill="none"
                     stroke="transparent"
-                    strokeWidth="16"
+                    strokeWidth="18"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectConnection(conn.id);
@@ -596,15 +706,25 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                     }}
                   />
 
-                  {/* Visible Line */}
+                  {/* Highlight Glow when selected */}
+                  {isSelected && (
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke="#003d9b"
+                      strokeWidth="8"
+                      strokeOpacity="0.25"
+                      strokeLinecap="round"
+                    />
+                  )}
+
+                  {/* Visible Wire Line */}
                   <path
                     d={pathD}
                     fill="none"
                     stroke={isSelected ? '#003d9b' : strokeColor}
                     strokeWidth={isSelected ? 4 : 2.5}
-                    strokeDasharray={
-                      conn.type === 'comms' || conn.type === 'ground' ? '6 4' : 'none'
-                    }
+                    strokeDasharray={strokeDasharray}
                     markerEnd={`url(#marker-${conn.type === 'comms' ? 'comms' : conn.type === 'dc' ? 'dc' : 'ac'})`}
                     className="transition-all"
                   />
@@ -617,17 +737,18 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                   )}
 
                   {/* Label Text Pill */}
-                  {conn.label && (
-                    <g transform={`translate(${midX}, ${(p1.y + p2.y) / 2})`}>
+                  {(conn.label || conn.wireSpec) && (
+                    <g transform={`translate(${midX}, ${midY})`}>
                       <rect
-                        x="-50"
-                        y="-9"
-                        width="100"
-                        height="18"
-                        rx="3"
+                        x="-55"
+                        y="-10"
+                        width="110"
+                        height="20"
+                        rx="4"
                         fill="#ffffff"
-                        stroke={strokeColor}
-                        strokeWidth="1"
+                        stroke={isSelected ? '#003d9b' : strokeColor}
+                        strokeWidth={isSelected ? 2 : 1}
+                        className="shadow-2xs"
                       />
                       <text
                         x="0"
@@ -635,12 +756,12 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                         fill="#181c1f"
                         fontSize="9"
                         fontFamily="monospace"
-                        fontWeight="600"
+                        fontWeight="700"
                         textAnchor="middle"
                       >
-                        {conn.label.length > 16
-                          ? conn.label.slice(0, 14) + '..'
-                          : conn.label}
+                        {(conn.label || conn.wireSpec || '').length > 18
+                          ? (conn.label || conn.wireSpec || '').slice(0, 16) + '..'
+                          : conn.label || conn.wireSpec}
                       </text>
                     </g>
                   )}
@@ -669,6 +790,125 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
               />
             )}
           </svg>
+
+          {/* Interactive Canvas Overlay Badge for Selected Connection Line */}
+          {selectedConnectionId && (
+            (() => {
+              const selectedConn = connections.find((c) => c.id === selectedConnectionId);
+              if (!selectedConn) return null;
+              const fromN = nodes.find((n) => n.id === selectedConn.fromNodeId);
+              const toN = nodes.find((n) => n.id === selectedConn.toNodeId);
+              if (!fromN || !toN) return null;
+
+              const fromPorts = EQUIPMENT_PORTS[fromN.type] || [];
+              const toPorts = EQUIPMENT_PORTS[toN.type] || [];
+              const p1 = getPortCoordinates(fromN, (fromPorts.find((p) => p.id === selectedConn.fromPort) || { position: 'right' }).position);
+              const p2 = getPortCoordinates(toN, (toPorts.find((p) => p.id === selectedConn.toPort) || { position: 'left' }).position);
+              const midX = (p1.x + p2.x) / 2;
+              const midY = (p1.y + p2.y) / 2;
+
+              return (
+                <div
+                  style={{
+                    transform: `translate(${midX}px, ${midY - 48}px)`,
+                  }}
+                  className="absolute z-50 pointer-events-auto -translate-x-1/2 -translate-y-full bg-[#ffffff] border-2 border-[#003d9b] rounded-xl shadow-xl p-2.5 w-72 text-xs space-y-2 animate-in fade-in zoom-in-95 duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Badge Header with Title & Delete Icon */}
+                  <div className="flex items-center justify-between border-b border-[#ebeef2] pb-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-[#003d9b]">
+                      <Cable className="w-4 h-4" />
+                      <span>Connection Control ({selectedConn.id})</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onDeleteConnection(selectedConn.id)}
+                        className="bg-[#ffdad6] hover:bg-[#ba1a1a] text-[#ba1a1a] hover:text-white p-1 rounded-md transition-all font-bold text-[10px] flex items-center gap-1"
+                        title="Delete connection line from canvas (or press Delete key)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                      <button
+                        onClick={() => onSelectConnection(null)}
+                        className="text-[#737685] hover:text-[#181c1f] p-1 rounded"
+                        title="Deselect line"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Line Type Quick Switcher */}
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#434654] block mb-1">
+                      Change Line Type:
+                    </span>
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                      {legendTypes.map((leg) => {
+                        const isMatch = selectedConn.type === leg.categoryKey;
+                        return (
+                          <button
+                            key={leg.id}
+                            onClick={() =>
+                              onUpdateConnection &&
+                              onUpdateConnection(selectedConn.id, {
+                                type: leg.categoryKey,
+                                color: leg.color,
+                                style: leg.style,
+                              })
+                            }
+                            className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 flex items-center gap-1 transition-all ${
+                              isMatch
+                                ? 'bg-[#003d9b] text-white shadow-xs'
+                                : 'bg-[#f1f4f8] text-[#434654] hover:bg-[#e0e3e7]'
+                            }`}
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full border border-white"
+                              style={{ backgroundColor: leg.color }}
+                            />
+                            <span>{leg.label.split(' ')[0]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Label & Wire Spec Edit Inputs */}
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <div>
+                      <span className="text-[9px] font-bold text-[#737685] block uppercase">Line Label</span>
+                      <input
+                        type="text"
+                        value={selectedConn.label || ''}
+                        onChange={(e) =>
+                          onUpdateConnection &&
+                          onUpdateConnection(selectedConn.id, { label: e.target.value })
+                        }
+                        placeholder="Label name"
+                        className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-1.5 py-1 text-[11px] font-semibold text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-[#737685] block uppercase">Wire Spec</span>
+                      <input
+                        type="text"
+                        value={selectedConn.wireSpec || ''}
+                        onChange={(e) =>
+                          onUpdateConnection &&
+                          onUpdateConnection(selectedConn.id, { wireSpec: e.target.value })
+                        }
+                        placeholder="e.g. 10 AWG"
+                        className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-1.5 py-1 text-[11px] text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          )}
 
           {/* Equipment Nodes Layer */}
           {nodes.map((node) => {
@@ -797,49 +1037,152 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
         </div>
       </div>
 
-      {/* Bottom Panel: Legend & Design Notes */}
+      {/* Bottom Panel: Connection Legend & Component Engineering Notes */}
       {showBottomPanel && (
-        <div className="h-40 border-t border-[#c3c6d6] bg-[#ffffff] shrink-0 flex divide-x divide-[#ebeef2] text-xs relative">
-          {/* Connection Legend */}
-          <div className="w-64 p-3 flex flex-col justify-between">
-            <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f] mb-1">
-              {t('legendTitle')}
-            </span>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-[3px] bg-[#0052cc] rounded-full" />
-                <span className="text-xs text-[#434654]">{t('dcPower')}</span>
+        <div className="h-44 border-t border-[#c3c6d6] bg-[#ffffff] shrink-0 flex divide-x divide-[#ebeef2] text-xs relative">
+          {/* Interactive Connection Legend */}
+          <div className="w-80 p-3 flex flex-col justify-between overflow-y-auto">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <Cable className="w-4 h-4 text-[#003d9b]" />
+                <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
+                  {t('legendTitle')}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-[3px] bg-[#334155] rounded-full" />
-                <span className="text-xs text-[#434654]">{t('acPower')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-[2px] bg-[#ea580c] border-b border-dashed border-[#ea580c]" />
-                <span className="text-xs text-[#434654]">{t('commsLine')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-[2px] bg-[#16a34a] border-b border-dashed border-[#16a34a]" />
-                <span className="text-xs text-[#434654]">{t('groundLine')}</span>
-              </div>
+              <button
+                onClick={() => setIsAddLegendModalOpen(true)}
+                className="px-2 py-0.5 bg-[#dae2ff] text-[#003d9b] hover:bg-[#b9cde5] rounded text-[10px] font-bold flex items-center gap-1 transition-colors"
+                title="Add custom line type to project legend"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Custom Line</span>
+              </button>
+            </div>
+
+            <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
+              {legendTypes.map((item) => {
+                const isActiveDefault = activeWiringType === item.categoryKey;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      if (onSelectActiveWiringType) {
+                        onSelectActiveWiringType(item.categoryKey);
+                      }
+                      if (selectedConnectionId && onUpdateConnection) {
+                        onUpdateConnection(selectedConnectionId, {
+                          type: item.categoryKey,
+                          color: item.color,
+                          style: item.style,
+                        });
+                      }
+                    }}
+                    className={`p-1.5 rounded border flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                      isActiveDefault
+                        ? 'border-[#003d9b] bg-[#dae2ff] text-[#003d9b] font-semibold'
+                        : 'border-[#e0e3e7] bg-[#f8fafc] text-[#434654] hover:bg-[#f1f4f8]'
+                    }`}
+                    title="Click to select as default wiring type (or change type of selected canvas line)"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-2 flex items-center justify-center shrink-0">
+                        <div
+                          className="w-full"
+                          style={{
+                            height: '3px',
+                            backgroundColor: item.color,
+                            borderStyle: item.style === 'solid' ? 'none' : item.style,
+                            borderWidth: item.style !== 'solid' ? '1px 0 0 0' : '0',
+                            borderColor: item.color,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs truncate">{item.label}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isActiveDefault && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-[#003d9b] text-white px-1.5 py-0.5 rounded">
+                          Active
+                        </span>
+                      )}
+                      {item.isCustom && onDeleteCustomLegendType && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteCustomLegendType(item.id);
+                          }}
+                          className="text-[#737685] hover:text-[#ba1a1a] p-0.5 rounded"
+                          title="Remove custom legend line"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-[10px] text-[#737685] italic mt-1">
+              * Click any line type above to change default wire mode or modify selected line.
             </div>
           </div>
 
-          {/* Engineering Design Notes */}
+          {/* Component Notes & Engineering Design Calculations */}
           <div className="flex-1 p-3 flex flex-col relative">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
-                {t('engineeringNotes')}
-              </span>
-              <div className="flex items-center gap-3 pr-6">
-                <span className="text-[10px] text-[#737685] font-mono">Autosaved</span>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#003d9b]" />
+                <span className="font-bold text-xs uppercase tracking-wider text-[#181c1f]">
+                  {t('engineeringNotes')} & Component Specs
+                </span>
+              </div>
+              <div className="flex items-center gap-2 pr-6">
+                {/* Quick calculation snippet insert buttons */}
+                <button
+                  onClick={() =>
+                    onChangeDesignNotes(
+                      designNotes +
+                        '\n\n[EQUIPMENT SIZING & VOC CALCULATION]:\n1. String Sizing: 14 Modules per String @ Temp Coeff -0.28%/°C. Max Voc = 612.4 VDC @ -10°C ambient.'
+                    )
+                  }
+                  className="px-2 py-0.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] rounded text-[10px] font-bold transition-colors"
+                >
+                  + PV Sizing Note
+                </button>
+
+                <button
+                  onClick={() =>
+                    onChangeDesignNotes(
+                      designNotes +
+                        '\n\n[OVERCURRENT PROTECTION & OCPD]:\n2. DC Overcurrent Protection: 15A gPV fuses in combiner box. AC OCPD: 100A 2-Pole Breaker.'
+                    )
+                  }
+                  className="px-2 py-0.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] rounded text-[10px] font-bold transition-colors"
+                >
+                  + OCPD Note
+                </button>
+
+                <button
+                  onClick={() =>
+                    onChangeDesignNotes(
+                      designNotes +
+                        '\n\n[SAFETY & RAPID SHUTDOWN]:\n3. Rapid Shutdown compliance verified according to NEC 690.12 with Sol-Ark integrated RSD transmitter.'
+                    )
+                  }
+                  className="px-2 py-0.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] rounded text-[10px] font-bold transition-colors"
+                >
+                  + RSD Compliance
+                </button>
+
+                <span className="text-[10px] text-[#737685] font-mono border-l border-[#c3c6d6] pl-2">Autosaved</span>
               </div>
             </div>
             <textarea
               value={designNotes}
               onChange={(e) => onChangeDesignNotes(e.target.value)}
-              className="flex-1 w-full bg-[#f8fafc] border border-[#c3c6d6] rounded p-2 font-mono text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] resize-none"
-              placeholder="Type notes..."
+              className="flex-1 w-full bg-[#f8fafc] border border-[#c3c6d6] rounded p-2.5 font-mono text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b] leading-relaxed resize-none shadow-inner"
+              placeholder="Type design notes, electrical calculations, conductor sizing specs, or code compliance comments..."
             />
             {onToggleBottomPanel && (
               <button
@@ -853,6 +1196,17 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           </div>
         </div>
       )}
+
+      {/* Add Custom Legend Modal */}
+      <AddLegendModal
+        isOpen={isAddLegendModalOpen}
+        onClose={() => setIsAddLegendModalOpen(false)}
+        onAddLegend={(newLegend) => {
+          if (onAddCustomLegendType) {
+            onAddCustomLegendType(newLegend);
+          }
+        }}
+      />
     </div>
   );
 };

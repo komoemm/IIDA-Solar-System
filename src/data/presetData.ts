@@ -5,7 +5,15 @@ import {
   Connection,
   ProjectMetadata,
   PortDefinition,
+  CustomLegendType,
 } from '../types';
+
+export const DEFAULT_LEGEND_TYPES: CustomLegendType[] = [
+  { id: 'dc', label: 'DC Power (PV / Battery)', categoryKey: 'dc', color: '#0052cc', style: 'solid', isCustom: false },
+  { id: 'ac', label: 'AC Power (Grid / Panels)', categoryKey: 'ac', color: '#334155', style: 'solid', isCustom: false },
+  { id: 'comms', label: 'CAN Bus / Comms Line', categoryKey: 'comms', color: '#ea580c', style: 'dashed', isCustom: false },
+  { id: 'ground', label: 'Grounding Conductor', categoryKey: 'ground', color: '#16a34a', style: 'dashed', isCustom: false },
+];
 
 // Real-world high quality reference image links with reliable fallback support
 export const EQUIPMENT_IMAGES: Record<EquipmentType, string> = {

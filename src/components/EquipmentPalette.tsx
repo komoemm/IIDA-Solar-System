@@ -20,15 +20,24 @@ import { useLanguage } from '../context/LanguageContext';
 
 interface EquipmentPaletteProps {
   onAddEquipment: (type: EquipmentType) => void;
+  onAddEquipmentFromCatalog?: (item: EquipmentLibraryItem) => void;
+  catalogItems?: EquipmentLibraryItem[];
   onClose?: () => void;
 }
 
-export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipment, onClose }) => {
+export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({
+  onAddEquipment,
+  onAddEquipmentFromCatalog,
+  catalogItems = LIBRARY_ITEMS,
+  onClose,
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const { language, t } = useLanguage();
 
-  const categories = ['All', 'Generation', 'Conversion', 'Storage', 'Distribution', 'Loads'];
+  const categories = Array.from(
+    new Set(['All', 'Generation', 'Conversion', 'Storage', 'Distribution', 'Loads', ...catalogItems.map((item) => item.category)])
+  );
 
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
@@ -50,12 +59,13 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
     return item.defaultName;
   };
 
-  const filteredItems = LIBRARY_ITEMS.filter((item) => {
+  const filteredItems = catalogItems.filter((item) => {
     const itemName = getEquipmentName(item);
     const matchesSearch =
       itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.defaultName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.defaultManufacturer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
     return matchesSearch && matchesCategory;
@@ -173,10 +183,14 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
             const displayName = getEquipmentName(item);
             return (
               <div
-                key={item.type}
+                key={`${item.type}-${item.defaultName}`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, item)}
-                onClick={() => onAddEquipment(item.type)}
+                onClick={() =>
+                  onAddEquipmentFromCatalog
+                    ? onAddEquipmentFromCatalog(item)
+                    : onAddEquipment(item.type)
+                }
                 className="group relative bg-[#ffffff] hover:bg-[#f1f4f8] border border-[#c3c6d6] hover:border-[#003d9b] rounded p-2 transition-all cursor-grab active:cursor-grabbing shadow-2xs flex gap-2.5 items-center"
                 title="Drag onto canvas or click to add"
               >
@@ -206,7 +220,11 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({ onAddEquipme
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onAddEquipment(item.type);
+                        if (onAddEquipmentFromCatalog) {
+                          onAddEquipmentFromCatalog(item);
+                        } else {
+                          onAddEquipment(item.type);
+                        }
                       }}
                       className="opacity-0 group-hover:opacity-100 p-1 text-[#003d9b] hover:bg-[#003d9b]/10 rounded transition-all"
                       title="Add to Canvas"

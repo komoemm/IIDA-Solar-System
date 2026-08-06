@@ -13,12 +13,9 @@ import { ProjectSettings } from './components/ProjectSettings';
 import { UserManual } from './components/UserManual';
 import { EquipmentModal } from './components/EquipmentModal';
 import { Cloud, CheckCircle2, X, Clock, Sun, Database, GitCommit, Calendar, MessageSquare, Tag, Save, ArrowRight } from 'lucide-react';
-import {
-  exportElementToPng,
-  exportDiagramToSvg,
-  exportDiagramToJson,
-} from './utils/exportUtils';
-import { EquipmentType } from './types';
+import { exportElementToPng, exportDiagramToSvg, exportDiagramToJson } from './utils/exportUtils';
+import { EquipmentType, EquipmentLibraryItem } from './types';
+import { LIBRARY_ITEMS } from './data/presetData';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<
@@ -26,6 +23,7 @@ export default function App() {
   >('canvas');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [catalogItems, setCatalogItems] = useState<EquipmentLibraryItem[]>(LIBRARY_ITEMS);
 
   const {
     nodes,
@@ -50,6 +48,12 @@ export default function App() {
     updateDesignNotes,
     resetToDefault,
     loadState,
+    legendTypes,
+    activeWiringType,
+    setActiveWiringType,
+    addCustomLegendType,
+    deleteCustomLegendType,
+    updateConnection,
     undo,
     redo,
     canUndo,
@@ -214,10 +218,12 @@ export default function App() {
     manufacturer: string,
     model: string,
     location: string,
-    imageUrl: string
+    imageUrl: string,
+    category?: string
   ) => {
-    const newNode = addNode(type, undefined, undefined, name);
+    const newNode = addNode(type, undefined, undefined, name, category);
     updateNode(newNode.id, {
+      category: category || newNode.category,
       capacity,
       voltage,
       manufacturer,
@@ -225,6 +231,33 @@ export default function App() {
       location,
       imageUrl,
     });
+  };
+
+  const handleSaveCatalogItem = (newItem: EquipmentLibraryItem) => {
+    setCatalogItems((prev) => {
+      const index = prev.findIndex(
+        (item) => item.type === newItem.type && item.defaultName === newItem.defaultName
+      );
+      if (index >= 0) {
+        const copy = [...prev];
+        copy[index] = newItem;
+        return copy;
+      }
+      return [newItem, ...prev];
+    });
+  };
+
+  const handleAddEquipmentFromCatalog = (item: EquipmentLibraryItem) => {
+    const newNode = addNode(item.type, undefined, undefined, item.defaultName, item.category);
+    updateNode(newNode.id, {
+      category: item.category,
+      capacity: item.defaultCapacity,
+      voltage: item.defaultVoltage,
+      manufacturer: item.defaultManufacturer,
+      model: item.defaultModel,
+      imageUrl: item.imageUrl,
+    });
+    setActiveTab('canvas');
   };
 
   return (
@@ -275,6 +308,8 @@ export default function App() {
                 onAddEquipment={(type) => {
                   addNode(type);
                 }}
+                onAddEquipmentFromCatalog={handleAddEquipmentFromCatalog}
+                catalogItems={catalogItems}
                 onClose={() => setShowPalette(false)}
               />
             )}
@@ -285,14 +320,29 @@ export default function App() {
               connections={connections}
               selectedNodeId={selectedNodeId}
               selectedConnectionId={selectedConnectionId}
+              legendTypes={legendTypes}
+              activeWiringType={activeWiringType}
+              onSelectActiveWiringType={setActiveWiringType}
+              onAddCustomLegendType={addCustomLegendType}
+              onDeleteCustomLegendType={deleteCustomLegendType}
               onSelectNode={(id) => {
                 setSelectedNodeId(id);
-                if (id) setShowProperties(true);
+                if (id) {
+                  setSelectedConnectionId(null);
+                  setShowProperties(true);
+                }
               }}
-              onSelectConnection={setSelectedConnectionId}
+              onSelectConnection={(id) => {
+                setSelectedConnectionId(id);
+                if (id) {
+                  setSelectedNodeId(null);
+                  setShowProperties(true);
+                }
+              }}
               onMoveNode={moveNode}
               onFinalizeMoveNode={finalizeMoveNode}
               onAddConnection={addConnection}
+              onUpdateConnection={updateConnection}
               onDeleteNode={deleteNode}
               onDeleteConnection={deleteConnection}
               onAddEquipmentFromDrop={(type, x, y) => {
@@ -314,13 +364,17 @@ export default function App() {
             {showProperties && (
               <PropertiesPanel
                 node={selectedNode}
+                selectedConnection={selectedConnection}
                 connections={connections}
                 allNodes={nodes}
+                legendTypes={legendTypes}
                 onUpdateNode={updateNode}
+                onUpdateConnection={updateConnection}
                 onDeleteNode={deleteNode}
                 onDeleteConnection={deleteConnection}
                 onClose={() => {
                   setSelectedNodeId(null);
+                  setSelectedConnectionId(null);
                   setShowProperties(false);
                 }}
               />
@@ -358,6 +412,9 @@ export default function App() {
               addNode(type);
               setActiveTab('canvas');
             }}
+            onAddEquipmentFromCatalog={handleAddEquipmentFromCatalog}
+            catalogItems={catalogItems}
+            onSaveCatalogItem={handleSaveCatalogItem}
           />
         )}
 
@@ -383,6 +440,8 @@ export default function App() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddEquipmentFromModal}
+        existingCategories={Array.from(new Set(nodes.map((n) => n.category).filter(Boolean) as string[]))}
+        catalogItems={catalogItems}
       />
 
       {/* Cloud Save Version Modal */}

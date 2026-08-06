@@ -7,6 +7,7 @@ import {
   EquipmentType,
   PortId,
   ConnectionCategory,
+  CustomLegendType,
 } from '../types';
 import {
   INITIAL_NODES,
@@ -15,6 +16,7 @@ import {
   INITIAL_DESIGN_NOTES,
   EQUIPMENT_IMAGES,
   LIBRARY_ITEMS,
+  DEFAULT_LEGEND_TYPES,
 } from '../data/presetData';
 
 const MAX_HISTORY = 30;
@@ -32,6 +34,7 @@ export function useDiagramState() {
             connections: parsed.connections,
             metadata: parsed.metadata || DEFAULT_METADATA,
             designNotes: parsed.designNotes || INITIAL_DESIGN_NOTES,
+            legendTypes: parsed.legendTypes || DEFAULT_LEGEND_TYPES,
           };
         }
       }
@@ -43,6 +46,7 @@ export function useDiagramState() {
       connections: INITIAL_CONNECTIONS,
       metadata: DEFAULT_METADATA,
       designNotes: INITIAL_DESIGN_NOTES,
+      legendTypes: DEFAULT_LEGEND_TYPES,
     };
   };
 
@@ -51,6 +55,8 @@ export function useDiagramState() {
   const [connections, setConnections] = useState<Connection[]>(initialState.connections);
   const [metadata, setMetadata] = useState<ProjectMetadata>(initialState.metadata);
   const [designNotes, setDesignNotes] = useState<string>(initialState.designNotes);
+  const [legendTypes, setLegendTypes] = useState<CustomLegendType[]>(initialState.legendTypes);
+  const [activeWiringType, setActiveWiringType] = useState<string>('dc');
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
     initialState.nodes[0]?.id || 'INV-01'
@@ -128,7 +134,7 @@ export function useDiagramState() {
 
   // Add Equipment Node
   const addNode = useCallback(
-    (type: EquipmentType, customX?: number, customY?: number, nameOverride?: string) => {
+    (type: EquipmentType, customX?: number, customY?: number, nameOverride?: string, categoryOverride?: string) => {
       const libraryPreset = LIBRARY_ITEMS.find((item) => item.type === type);
       const prefixMap: Record<EquipmentType, string> = {
         pv_array: 'PV',
@@ -150,6 +156,7 @@ export function useDiagramState() {
         id: newId,
         name: nameOverride || libraryPreset?.defaultName || `${type.replace('_', ' ').toUpperCase()} #${existingCount}`,
         type,
+        category: categoryOverride || libraryPreset?.category || 'Generation',
         capacity: libraryPreset?.defaultCapacity || '10.0 kW',
         voltage: libraryPreset?.defaultVoltage || '240 VAC',
         location: 'Utility Area',
@@ -243,6 +250,16 @@ export function useDiagramState() {
     [connections, nodes, metadata, designNotes, saveStateToHistory]
   );
 
+  // Update Connection
+  const updateConnection = useCallback(
+    (connId: string, updates: Partial<Connection>) => {
+      const nextConns = connections.map((c) => (c.id === connId ? { ...c, ...updates } : c));
+      setConnections(nextConns);
+      saveStateToHistory(nodes, nextConns, metadata, designNotes);
+    },
+    [connections, nodes, metadata, designNotes, saveStateToHistory]
+  );
+
   // Delete Connection
   const deleteConnection = useCallback(
     (connId: string) => {
@@ -252,6 +269,27 @@ export function useDiagramState() {
       saveStateToHistory(nodes, nextConns, metadata, designNotes);
     },
     [connections, selectedConnectionId, nodes, metadata, designNotes, saveStateToHistory]
+  );
+
+  // Add / Customize Legend Types
+  const addCustomLegendType = useCallback(
+    (newLegend: CustomLegendType) => {
+      setLegendTypes((prev) => {
+        const exists = prev.some((item) => item.id === newLegend.id);
+        if (exists) {
+          return prev.map((item) => (item.id === newLegend.id ? newLegend : item));
+        }
+        return [...prev, { ...newLegend, isCustom: true }];
+      });
+    },
+    []
+  );
+
+  const deleteCustomLegendType = useCallback(
+    (legendId: string) => {
+      setLegendTypes((prev) => prev.filter((item) => item.id !== legendId));
+    },
+    []
   );
 
   // Auto Layout Nodes algorithm
@@ -351,6 +389,9 @@ export function useDiagramState() {
     connections,
     metadata,
     designNotes,
+    legendTypes,
+    activeWiringType,
+    setActiveWiringType,
     selectedNode,
     selectedNodeId,
     selectedConnection,
@@ -363,7 +404,10 @@ export function useDiagramState() {
     updateNode,
     deleteNode,
     addConnection,
+    updateConnection,
     deleteConnection,
+    addCustomLegendType,
+    deleteCustomLegendType,
     autoLayout,
     updateMetadata,
     updateDesignNotes,
