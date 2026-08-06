@@ -36,7 +36,7 @@ export const ProjectDocsCombinedView: React.FC<ProjectDocsCombinedViewProps> = (
   return (
     <div className="flex-1 flex flex-col h-full bg-[#f8fafc] overflow-hidden font-sans">
       {/* Sub-Header Navigation Tabs */}
-      <div className="bg-[#ffffff] border-b border-[#c3c6d6] px-4 md:px-6 py-2 flex items-center justify-between gap-4 shadow-2xs shrink-0 z-10">
+      <nav className="bg-[#ffffff] border-b border-[#c3c6d6] px-4 md:px-6 py-2 flex items-center justify-between gap-4 shadow-2xs shrink-0 z-10" aria-label="Project Documentation Sub-Navigation">
         <div className="flex items-center gap-1.5 bg-[#f1f4f8] p-1 rounded-lg border border-[#c3c6d6]">
           <button
             onClick={() => setActiveSubTab('bim')}
@@ -82,38 +82,53 @@ export const ProjectDocsCombinedView: React.FC<ProjectDocsCombinedViewProps> = (
             {metadata.drawingNumber}
           </span>
         </div>
-      </div>
+      </nav>
 
       {/* Sub-Tab Viewport Content Area */}
-      <div className="flex-1 overflow-y-auto relative flex flex-col">
-        {activeSubTab === 'bim' && (
-          <BimSheetView
-            nodes={nodes}
-            connections={connections}
-            metadata={metadata}
-            designNotes={designNotes}
-          />
-        )}
+      <div className="flex-1 overflow-y-auto relative flex flex-col justify-between">
+        <div className="p-2 md:p-4">
+          {activeSubTab === 'bim' && (
+            <BimSheetView
+              nodes={nodes}
+              connections={connections}
+              metadata={metadata}
+              designNotes={designNotes}
+            />
+          )}
 
-        {activeSubTab === 'settings' && (
-          <ProjectSettings
-            metadata={metadata}
-            onUpdateMetadata={onUpdateMetadata}
-          />
-        )}
+          {activeSubTab === 'settings' && (
+            <ProjectSettings
+              metadata={metadata}
+              onUpdateMetadata={onUpdateMetadata}
+            />
+          )}
 
-        {activeSubTab === 'manual' && (
-          <UserManual
-            onOpenAddModal={onOpenAddModal}
-            onNavigateTab={(targetTab) => {
-              if (targetTab === 'bim' || targetTab === 'settings' || targetTab === 'manual') {
-                setActiveSubTab(targetTab as DocsSubTab);
-              } else {
-                onNavigateTab(targetTab);
-              }
-            }}
-          />
-        )}
+          {activeSubTab === 'manual' && (
+            <UserManual
+              onOpenAddModal={onOpenAddModal}
+              onNavigateTab={(targetTab) => {
+                if (targetTab === 'bim' || targetTab === 'settings' || targetTab === 'manual') {
+                  setActiveSubTab(targetTab as DocsSubTab);
+                } else {
+                  onNavigateTab(targetTab);
+                }
+              }}
+            />
+          )}
+        </div>
+
+        {/* Localized Footer */}
+        <footer className="mt-8 bg-[#f1f4f8] border-t border-[#c3c6d6] px-4 py-3 text-xs text-[#525666] flex flex-col md:flex-row items-center justify-between gap-2 text-center md:text-left">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <span className="font-bold text-[#003d9b]">IIDA Electronics Myanmar</span>
+            <span className="hidden sm:inline">•</span>
+            <span>Solar PV &amp; Hybrid Energy Schematics Engineering Suite</span>
+          </div>
+          <div className="flex items-center gap-4 text-[11px] font-mono">
+            <span>Yangon Office: No. 124, Pyay Road</span>
+            <span>Mandalay Regional Support</span>
+          </div>
+        </footer>
       </div>
     </div>
   );

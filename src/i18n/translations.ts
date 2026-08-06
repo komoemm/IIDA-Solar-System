@@ -19,6 +19,7 @@ export const translations = {
     navManual: 'User Manual',
     navDocsCombined: 'BIM, Settings & Manual',
     navInventoryCombined: 'Equipment & Gallery',
+    navCalculator: 'Solar Load Calculator',
 
     // Top Header Actions
     undo: 'Undo',
@@ -215,6 +216,7 @@ export const translations = {
     navManual: '操作マニュアル',
     navDocsCombined: 'BIM・設定・マニュアル',
     navInventoryCombined: '機器・ギャラリー',
+    navCalculator: '太陽光負荷計算機',
 
     // Top Header Actions
     undo: '元に戻す',

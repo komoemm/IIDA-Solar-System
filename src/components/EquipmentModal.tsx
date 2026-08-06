@@ -3,6 +3,7 @@ import { X, Plus, Upload, Tag, FolderPlus, Sparkles, Check, Edit3 } from 'lucide
 import { EquipmentType, EquipmentLibraryItem } from '../types';
 import { LIBRARY_ITEMS, EQUIPMENT_IMAGES } from '../data/presetData';
 import { useLanguage } from '../context/LanguageContext';
+import { OptimizedImage } from './OptimizedImage';
 
 interface EquipmentModalProps {
   isOpen: boolean;
@@ -78,8 +79,16 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
         setModel(preset.defaultModel);
         setImageUrl(preset.imageUrl || EQUIPMENT_IMAGES[preset.type]);
       }
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, catalogItems]);
+  }, [isOpen, catalogItems, onClose]);
 
   if (!isOpen) return null;
 
@@ -153,18 +162,25 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans animate-fade-in">
-      <div className="bg-[#ffffff] rounded-xl max-w-2xl w-full border border-[#c3c6d6] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-equipment-modal-title"
+        className="bg-[#ffffff] rounded-xl max-w-2xl w-full border border-[#c3c6d6] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      >
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-[#ebeef2] bg-[#f1f4f8] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#003d9b]" />
-            <span className="font-bold text-sm text-[#181c1f] uppercase tracking-wider">
+            <span id="add-equipment-modal-title" className="font-bold text-sm text-[#181c1f] uppercase tracking-wider">
               {t('addEquipmentTitle')}
             </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] transition-colors"
+            aria-label="Close Add Equipment modal"
+            className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] focus:outline-none focus:ring-2 focus:ring-[#003d9b] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -455,14 +471,13 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 {imageUrl && (
                   <div className="mt-2 flex items-center gap-2 p-1.5 bg-[#ffffff] border border-[#c3c6d6] rounded">
                     <div className="w-12 h-12 rounded bg-[#ebeef2] overflow-hidden shrink-0 border border-[#c3c6d6]">
-                      <img
+                      <OptimizedImage
                         src={imageUrl}
-                        alt="Preview"
-                        referrerPolicy="no-referrer"
+                        alt="Equipment Preview"
+                        width={100}
+                        height={100}
+                        equipmentType={selectedType}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
                       />
                     </div>
                     <div className="text-[10px] text-[#181c1f] min-w-0">

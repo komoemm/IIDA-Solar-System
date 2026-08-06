@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
     activeTab === 'manual';
 
   return (
-    <header className="fixed top-0 left-0 w-full z-40 bg-[#ffffff] border-b border-[#c3c6d6] shadow-sm font-sans">
+    <header className="fixed top-0 left-0 w-full z-40 bg-[#ffffff] border-b border-[#c3c6d6] shadow-sm font-sans" aria-label="IIDA Electronics Myanmar Header">
       {/* Top Banner Row */}
       <div className="h-14 px-4 md:px-6 flex items-center justify-between gap-4 border-b border-[#ebeef2]">
         {/* Brand & Project Name */}
@@ -172,7 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Navigation Tabs Bar with Small Icons */}
-      <nav className="h-10 px-4 md:px-6 flex items-center bg-[#ffffff] border-b border-[#c3c6d6] text-xs font-bold uppercase tracking-wider">
+      <nav className="h-10 px-4 md:px-6 flex items-center bg-[#ffffff] border-b border-[#c3c6d6] text-xs font-bold uppercase tracking-wider" aria-label="Main Application Navigation">
         <div className="flex h-full gap-1">
           {/* Main Tab 1: Diagram Canvas */}
           <button

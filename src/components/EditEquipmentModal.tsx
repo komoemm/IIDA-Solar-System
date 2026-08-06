@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { EquipmentNode, EquipmentType } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { OptimizedImage } from './OptimizedImage';
 
 interface EditEquipmentModalProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ export const EditEquipmentModal: React.FC<EditEquipmentModalProps> = ({
   const [description, setDescription] = useState('');
 
   useEffect(() => {
-    if (node) {
+    if (isOpen && node) {
       setTagId(node.id);
       setName(node.name || '');
       setCategory(node.category || 'Generation');
@@ -72,8 +73,16 @@ export const EditEquipmentModal: React.FC<EditEquipmentModalProps> = ({
       setImageUrl(node.imageUrl || '');
       setSpecSheetUrl(node.specSheetUrl || '');
       setDescription(node.description || '');
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [node]);
+  }, [isOpen, node, onClose]);
 
   if (!isOpen || !node) return null;
 
@@ -114,7 +123,12 @@ export const EditEquipmentModal: React.FC<EditEquipmentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans animate-in fade-in duration-150">
-      <div className="bg-[#ffffff] rounded-xl max-w-3xl w-full border border-[#c3c6d6] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] text-[#181c1f]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-equipment-modal-title"
+        className="bg-[#ffffff] rounded-xl max-w-3xl w-full border border-[#c3c6d6] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] text-[#181c1f]"
+      >
         {/* Modal Header */}
         <div className="px-5 py-3.5 border-b border-[#c3c6d6] bg-[#f1f4f8] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -122,10 +136,10 @@ export const EditEquipmentModal: React.FC<EditEquipmentModalProps> = ({
               {node.id}
             </div>
             <div>
-              <h2 className="font-bold text-sm text-[#181c1f] leading-snug">
+              <h2 id="edit-equipment-modal-title" className="font-bold text-sm text-[#181c1f] leading-snug">
                 Component Specifications &amp; Equipment Properties
               </h2>
-              <p className="text-[11px] text-[#737685]">
+              <p className="text-[11px] text-[#525666]">
                 Modify inventory parameters, technical ratings, and datasheet documents
               </p>
             </div>
@@ -139,7 +153,7 @@ export const EditEquipmentModal: React.FC<EditEquipmentModalProps> = ({
                   onClose();
                   onNavigateToCanvas(node.id);
                 }}
-                className="px-2.5 py-1 bg-[#dae2ff] hover:bg-[#b9cde5] text-[#003d9b] rounded text-xs font-bold transition-colors flex items-center gap-1.5"
+                className="px-2.5 py-1 bg-[#dae2ff] hover:bg-[#b9cde5] text-[#003d9b] rounded text-xs font-bold transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
                 title="Locate and open this item on the Diagram Canvas"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -147,8 +161,10 @@ export const EditEquipmentModal: React.FC<EditEquipmentModalProps> = ({
               </button>
             )}
             <button
+              type="button"
               onClick={onClose}
-              className="text-[#434654] hover:text-[#181c1f] p-1.5 rounded hover:bg-[#e0e3e7] transition-colors"
+              aria-label="Close Edit Equipment modal"
+              className="text-[#434654] hover:text-[#181c1f] p-1.5 rounded hover:bg-[#e0e3e7] focus:outline-none focus:ring-2 focus:ring-[#003d9b] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -161,14 +177,13 @@ export const EditEquipmentModal: React.FC<EditEquipmentModalProps> = ({
           <div className="p-3 bg-[#f8fafc] border border-[#c3c6d6] rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 rounded bg-[#ebeef2] border border-[#c3c6d6] overflow-hidden shrink-0">
-                <img
+                <OptimizedImage
                   src={imageUrl || node.imageUrl}
                   alt={node.name}
-                  referrerPolicy="no-referrer"
+                  width={100}
+                  height={100}
+                  equipmentType={node.type}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
                 />
               </div>
               <div>

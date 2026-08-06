@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   ExternalLink,
@@ -12,11 +12,21 @@ import {
   Check,
   DraftingCompass,
   Image as ImageIcon,
+  FileText,
+  Send,
+  CheckCircle2,
+  AlertTriangle,
+  Phone,
+  MapPin,
+  Building2,
+  Zap,
 } from 'lucide-react';
 import { LIBRARY_ITEMS, EQUIPMENT_IMAGES } from '../data/presetData';
 import { EquipmentType, EquipmentLibraryItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { EquipmentSketchVector } from './EquipmentSketchVector';
+import { OptimizedImage } from './OptimizedImage';
+import { validateQuoteRequest, QuoteFormData } from '../data/solarData';
 
 interface ReferenceGalleryProps {
   onAddEquipment: (type: EquipmentType) => void;
@@ -50,11 +60,44 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [displayMode, setDisplayMode] = useState<'sketch' | 'photo'>('sketch');
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
+  // Quote request state
+  const [quoteItem, setQuoteItem] = useState<EquipmentLibraryItem | null>(null);
+  const [quoteName, setQuoteName] = useState('');
+  const [quoteEmail, setQuoteEmail] = useState('');
+  const [quotePhone, setQuotePhone] = useState('');
+  const [quotePower, setQuotePower] = useState<number | string>(12);
+  const [quoteLocation, setQuoteLocation] = useState('Yangon, Myanmar');
+  const [quoteProjectScale, setQuoteProjectScale] = useState<'residential' | 'commercial' | 'industrial' | 'utility'>('commercial');
+  const [quoteQty, setQuoteQty] = useState(1);
+  const [quoteNotes, setQuoteNotes] = useState('');
+  const [quoteSubmitted, setQuoteSubmitted] = useState(false);
+  const [quoteErrors, setQuoteErrors] = useState<Record<string, string>>({});
+
   const { language, t } = useLanguage();
 
   const handleImageError = (url: string) => {
     setFailedImages((prev) => ({ ...prev, [url]: true }));
   };
+
+  // Escape key handler for all modals in ReferenceGallery
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (quoteItem) {
+          setQuoteItem(null);
+          setQuoteSubmitted(false);
+        } else if (selectedPhotoItem) {
+          setSelectedPhotoItem(null);
+        } else if (editingItem || isAddingNew) {
+          setEditingItem(null);
+          setIsAddingNew(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [quoteItem, selectedPhotoItem, editingItem, isAddingNew]);
 
   // Form state for catalog editor modal
   const [formType, setFormType] = useState<EquipmentType>('pv_array');
@@ -218,25 +261,33 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
         {/* Filter & Search Bar */}
         <div className="bg-[#ffffff] border border-[#c3c6d6] rounded-lg p-3 flex flex-col md:flex-row gap-3 items-center justify-between shadow-2xs">
           <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#737685]" />
+            <label htmlFor="catalog-search-input" className="sr-only">
+              Search equipment catalog by name, model, or manufacturer
+            </label>
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#525666]" aria-hidden="true" />
             <input
+              id="catalog-search-input"
               type="text"
               value={searchTerm}
+              aria-label="Search equipment catalog"
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t('searchPlaceholder')}
-              className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded pl-9 pr-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
+              className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded pl-9 pr-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
             />
           </div>
 
-          <div className="flex gap-1.5 overflow-x-auto w-full md:w-auto py-0.5">
+          <div role="tablist" aria-label="Catalog Categories" className="flex gap-1.5 overflow-x-auto w-full md:w-auto py-0.5">
             {categories.map((cat) => (
               <button
                 key={cat}
+                role="tab"
+                aria-selected={activeCategory === cat}
+                aria-label={`Filter catalog by category ${cat === 'All' ? 'All Equipment' : cat}`}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1 rounded text-xs font-semibold whitespace-nowrap transition-colors ${
+                className={`px-3 py-1 rounded text-xs font-semibold whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-[#003d9b] ${
                   activeCategory === cat
                     ? 'bg-[#003d9b] text-white'
-                    : 'bg-[#f1f4f8] text-[#434654] hover:bg-[#e0e3e7]'
+                    : 'bg-[#f1f4f8] text-[#181c1f] hover:bg-[#e0e3e7]'
                 }`}
               >
                 {cat === 'All' ? t('catAll') : cat}
@@ -252,7 +303,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
             const useSketch = displayMode === 'sketch' || isImageFailed;
 
             return (
-              <div
+              <article
                 key={`${item.type}-${item.defaultName}-${idx}`}
                 className="bg-[#ffffff] border border-[#c3c6d6] hover:border-[#003d9b] rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
               >
@@ -261,10 +312,12 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
                   {useSketch ? (
                     <EquipmentSketchVector type={item.type} />
                   ) : (
-                    <img
+                    <OptimizedImage
                       src={item.imageUrl}
                       alt={item.defaultName}
-                      referrerPolicy="no-referrer"
+                      width={400}
+                      height={300}
+                      equipmentType={item.type}
                       onError={() => handleImageError(item.imageUrl)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -326,11 +379,28 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
                 {/* Actions */}
                 <div className="flex items-center gap-2 pt-2 border-t border-[#ebeef2]">
                   <button
+                    type="button"
                     onClick={() => handleAddComponentClick(item)}
-                    className="flex-1 py-1.5 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded shadow-2xs transition-colors flex items-center justify-center gap-1"
+                    aria-label={`Add ${item.defaultName} to active diagram canvas`}
+                    className="flex-1 py-1.5 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded shadow-2xs transition-colors flex items-center justify-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{t('addComponent')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuoteItem(item);
+                      setQuoteQty(1);
+                      setQuoteSubmitted(false);
+                    }}
+                    aria-label={`Request official price quote for ${item.defaultName}`}
+                    title="Request Official Equipment Price Quote"
+                    className="py-1.5 px-2 bg-[#dae2ff] hover:bg-[#b9cde5] text-[#003d9b] font-bold text-xs rounded transition-colors flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Quote</span>
                   </button>
 
                   {item.specSheetUrl && (
@@ -338,7 +408,8 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
                       href={item.specSheetUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="p-1.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#434654] rounded transition-colors"
+                      aria-label={`Open datasheet spec PDF for ${item.defaultName} in new tab`}
+                      className="p-1.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#181c1f] rounded transition-colors focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
                       title="Open Spec Sheet PDF"
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -346,7 +417,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
                   )}
                 </div>
               </div>
-            </div>
+            </article>
           );
         })}
         </div>
@@ -359,6 +430,9 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
           onClick={() => setSelectedPhotoItem(null)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="preview-modal-title"
             className="bg-[#ffffff] rounded-xl max-w-2xl w-full overflow-hidden shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
@@ -366,17 +440,22 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
               {displayMode === 'sketch' || failedImages[selectedPhotoItem.imageUrl] ? (
                 <EquipmentSketchVector type={selectedPhotoItem.type} />
               ) : (
-                <img
+                <OptimizedImage
                   src={selectedPhotoItem.imageUrl}
                   alt={selectedPhotoItem.defaultName}
-                  referrerPolicy="no-referrer"
+                  width={800}
+                  height={600}
+                  priority={true}
+                  equipmentType={selectedPhotoItem.type}
                   onError={() => handleImageError(selectedPhotoItem.imageUrl)}
                   className="w-full h-full object-contain"
                 />
               )}
               <button
+                type="button"
                 onClick={() => setSelectedPhotoItem(null)}
-                className="absolute top-3 right-3 bg-black/70 hover:bg-black text-white p-1.5 rounded-full z-10"
+                aria-label="Close preview modal"
+                className="absolute top-3 right-3 bg-black/70 hover:bg-black text-white p-1.5 rounded-full z-10 focus:outline-none focus:ring-2 focus:ring-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -387,34 +466,50 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider text-[#003d9b] bg-[#dae2ff] px-2 py-0.5 rounded">
                   {selectedPhotoItem.category}
                 </span>
-                <h3 className="text-lg font-bold text-[#181c1f] mt-1">
+                <h3 id="preview-modal-title" className="text-lg font-bold text-[#181c1f] mt-1">
                   {selectedPhotoItem.defaultName}
                 </h3>
-                <p className="text-xs text-[#737685] font-mono">
+                <p className="text-xs text-[#525666] font-mono">
                   {selectedPhotoItem.defaultManufacturer} — {selectedPhotoItem.defaultModel}
                 </p>
               </div>
 
-              <p className="text-xs text-[#434654] leading-relaxed">
+              <p className="text-xs text-[#181c1f] leading-relaxed">
                 {selectedPhotoItem.description}
               </p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-[#ebeef2]">
                 <button
+                  type="button"
                   onClick={() => {
                     openEditModal(selectedPhotoItem);
                     setSelectedPhotoItem(null);
                   }}
-                  className="px-4 py-2 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#434654] font-semibold text-xs rounded-lg"
+                  className="px-4 py-2 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#181c1f] font-semibold text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
                 >
                   Edit Reference Catalog
                 </button>
                 <button
+                  type="button"
+                  onClick={() => {
+                    setQuoteItem(selectedPhotoItem);
+                    setQuoteQty(1);
+                    setQuoteSubmitted(false);
+                    setSelectedPhotoItem(null);
+                  }}
+                  aria-label={`Request official price quote for ${selectedPhotoItem.defaultName}`}
+                  className="px-4 py-2 bg-[#dae2ff] hover:bg-[#b9cde5] text-[#003d9b] font-bold text-xs rounded-lg flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Request Official Quote</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     handleAddComponentClick(selectedPhotoItem);
                     setSelectedPhotoItem(null);
                   }}
-                  className="px-4 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-xs"
+                  className="px-4 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-xs focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
                 >
                   {t('addComponent')}
                 </button>
@@ -424,24 +519,397 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
         </div>
       )}
 
+      {/* Official Equipment Quote Request Modal */}
+      {quoteItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans animate-fade-in">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quote-modal-title"
+            className="bg-[#ffffff] rounded-xl max-w-lg w-full border border-[#c3c6d6] shadow-2xl overflow-hidden text-[#181c1f]"
+          >
+            <div className="px-5 py-4 border-b border-[#ebeef2] bg-[#f1f4f8] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#003d9b]" />
+                <h2 id="quote-modal-title" className="font-bold text-sm text-[#181c1f]">
+                  Request Official Equipment Quote
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuoteItem(null);
+                  setQuoteSubmitted(false);
+                }}
+                aria-label="Close quote modal"
+                className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] focus:outline-none focus:ring-2 focus:ring-[#003d9b] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {quoteSubmitted ? (
+              <div className="p-6 text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#181c1f]">Official Quotation Request Received!</h3>
+                  <p className="text-xs text-[#525666] mt-1 leading-relaxed max-w-md mx-auto">
+                    Thank you, <strong className="text-[#181c1f]">{quoteName}</strong>! Our engineering sales team in Yangon will email a detailed proposal for{' '}
+                    <strong className="text-[#003d9b]">{quoteItem.defaultName}</strong> ({quoteQty} units) to{' '}
+                    <strong className="text-[#181c1f]">{quoteEmail}</strong> within 1 business day.
+                  </p>
+                </div>
+
+                {/* Summarized Quote Ticket */}
+                <div className="bg-[#f8fafc] border border-[#c3c6d6] rounded-lg p-3 text-left text-xs space-y-1.5 text-[#181c1f] font-sans">
+                  <div className="flex justify-between border-b border-[#ebeef2] pb-1 font-mono text-[11px]">
+                    <span className="text-[#525666]">Contact Phone:</span>
+                    <span className="font-bold">{quotePhone}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-[#ebeef2] pb-1 font-mono text-[11px]">
+                    <span className="text-[#525666]">Target Power Capacity:</span>
+                    <span className="font-bold text-[#003d9b]">{quotePower} kW</span>
+                  </div>
+                  <div className="flex justify-between border-b border-[#ebeef2] pb-1 font-mono text-[11px]">
+                    <span className="text-[#525666]">Site Location / Region:</span>
+                    <span className="font-bold">{quoteLocation}</span>
+                  </div>
+                  <div className="flex justify-between font-mono text-[11px]">
+                    <span className="text-[#525666]">Project Scale:</span>
+                    <span className="font-bold capitalize">{quoteProjectScale}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuoteItem(null);
+                    setQuoteSubmitted(false);
+                    setQuoteErrors({});
+                  }}
+                  className="px-5 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const valResult = validateQuoteRequest({
+                    fullName: quoteName,
+                    email: quoteEmail,
+                    phone: quotePhone,
+                    powerRequirementKw: quotePower,
+                    locationRegion: quoteLocation,
+                    projectScale: quoteProjectScale,
+                    notes: quoteNotes,
+                    estimatedQuantity: quoteQty,
+                  });
+
+                  if (!valResult.isValid) {
+                    setQuoteErrors(valResult.errors);
+                    return;
+                  }
+
+                  // Sanitized submit success
+                  setQuoteErrors({});
+                  setQuoteName(valResult.sanitizedData.fullName);
+                  setQuoteEmail(valResult.sanitizedData.email);
+                  setQuotePhone(valResult.sanitizedData.phone);
+                  setQuotePower(valResult.sanitizedData.powerRequirementKw);
+                  setQuoteLocation(valResult.sanitizedData.locationRegion);
+                  setQuoteNotes(valResult.sanitizedData.notes || '');
+                  setQuoteSubmitted(true);
+                }}
+                className="p-5 space-y-3.5 max-h-[80vh] overflow-y-auto"
+              >
+                <div className="p-3 bg-[#f8fafc] border border-[#c3c6d6] rounded-lg flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-[#003d9b] bg-[#dae2ff] px-2 py-0.5 rounded">
+                      {quoteItem.category}
+                    </span>
+                    <h4 className="font-bold text-xs text-[#181c1f] mt-1">{quoteItem.defaultName}</h4>
+                    <p className="text-[11px] text-[#525666] font-mono">
+                      {quoteItem.defaultManufacturer} • {quoteItem.defaultModel} ({quoteItem.defaultCapacity})
+                    </p>
+                  </div>
+                </div>
+
+                {/* Validation Banner if Errors Exist */}
+                {Object.keys(quoteErrors).length > 0 && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-900 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-bold block text-[11px] uppercase tracking-wider text-red-800">
+                        Please review required quotation fields:
+                      </strong>
+                      <ul className="list-disc list-inside mt-0.5 text-[11px] space-y-0.5">
+                        {Object.values(quoteErrors).map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Full Name */}
+                  <div>
+                    <label htmlFor="quote-user-name" className="block text-xs font-bold text-[#181c1f] mb-1">
+                      Contact Full Name <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="quote-user-name"
+                      type="text"
+                      value={quoteName}
+                      aria-label="Contact Full Name"
+                      onChange={(e) => {
+                        setQuoteName(e.target.value);
+                        if (quoteErrors.fullName) {
+                          setQuoteErrors((prev) => ({ ...prev, fullName: '' }));
+                        }
+                      }}
+                      placeholder="e.g. Mg Mg Win"
+                      className={`w-full bg-[#f8fafc] border ${
+                        quoteErrors.fullName ? 'border-red-500 bg-red-50/50' : 'border-[#c3c6d6]'
+                      } rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]`}
+                    />
+                    {quoteErrors.fullName && (
+                      <span className="text-[10px] font-semibold text-red-600 mt-0.5 block">
+                        {quoteErrors.fullName}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Work Email */}
+                  <div>
+                    <label htmlFor="quote-user-email" className="block text-xs font-bold text-[#181c1f] mb-1">
+                      Work Email Address <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="quote-user-email"
+                      type="email"
+                      value={quoteEmail}
+                      aria-label="Work Email Address"
+                      onChange={(e) => {
+                        setQuoteEmail(e.target.value);
+                        if (quoteErrors.email) {
+                          setQuoteErrors((prev) => ({ ...prev, email: '' }));
+                        }
+                      }}
+                      placeholder="e.g. mgmg@energy.com.mm"
+                      className={`w-full bg-[#f8fafc] border ${
+                        quoteErrors.email ? 'border-red-500 bg-red-50/50' : 'border-[#c3c6d6]'
+                      } rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]`}
+                    />
+                    {quoteErrors.email && (
+                      <span className="text-[10px] font-semibold text-red-600 mt-0.5 block">
+                        {quoteErrors.email}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Phone Number */}
+                  <div>
+                    <label htmlFor="quote-user-phone" className="block text-xs font-bold text-[#181c1f] mb-1 flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-[#003d9b]" />
+                      Phone Number <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="quote-user-phone"
+                      type="tel"
+                      value={quotePhone}
+                      aria-label="Phone Number"
+                      onChange={(e) => {
+                        setQuotePhone(e.target.value);
+                        if (quoteErrors.phone) {
+                          setQuoteErrors((prev) => ({ ...prev, phone: '' }));
+                        }
+                      }}
+                      placeholder="e.g. 09123456789 or +959..."
+                      className={`w-full bg-[#f8fafc] border ${
+                        quoteErrors.phone ? 'border-red-500 bg-red-50/50' : 'border-[#c3c6d6]'
+                      } rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]`}
+                    />
+                    {quoteErrors.phone && (
+                      <span className="text-[10px] font-semibold text-red-600 mt-0.5 block">
+                        {quoteErrors.phone}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Power Requirement (kW) */}
+                  <div>
+                    <label htmlFor="quote-power-kw" className="block text-xs font-bold text-[#181c1f] mb-1 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-amber-600" />
+                      Power Requirement (kW) <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="quote-power-kw"
+                      type="number"
+                      min="0.1"
+                      step="0.5"
+                      value={quotePower}
+                      aria-label="Power Requirement in kW"
+                      onChange={(e) => {
+                        setQuotePower(e.target.value);
+                        if (quoteErrors.powerRequirementKw) {
+                          setQuoteErrors((prev) => ({ ...prev, powerRequirementKw: '' }));
+                        }
+                      }}
+                      placeholder="e.g. 12 kW"
+                      className={`w-full bg-[#f8fafc] border ${
+                        quoteErrors.powerRequirementKw ? 'border-red-500 bg-red-50/50' : 'border-[#c3c6d6]'
+                      } rounded px-3 py-1.5 text-xs font-bold text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]`}
+                    />
+                    {quoteErrors.powerRequirementKw && (
+                      <span className="text-[10px] font-semibold text-red-600 mt-0.5 block">
+                        {quoteErrors.powerRequirementKw}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Site Location */}
+                  <div>
+                    <label htmlFor="quote-location" className="block text-xs font-bold text-[#181c1f] mb-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-[#003d9b]" />
+                      Site Location / Region <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="quote-location"
+                      type="text"
+                      value={quoteLocation}
+                      aria-label="Site Location or Region"
+                      onChange={(e) => {
+                        setQuoteLocation(e.target.value);
+                        if (quoteErrors.locationRegion) {
+                          setQuoteErrors((prev) => ({ ...prev, locationRegion: '' }));
+                        }
+                      }}
+                      placeholder="e.g. Yangon, Mandalay, Taunggyi"
+                      className={`w-full bg-[#f8fafc] border ${
+                        quoteErrors.locationRegion ? 'border-red-500 bg-red-50/50' : 'border-[#c3c6d6]'
+                      } rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]`}
+                    />
+                    {quoteErrors.locationRegion && (
+                      <span className="text-[10px] font-semibold text-red-600 mt-0.5 block">
+                        {quoteErrors.locationRegion}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Project Scale */}
+                  <div>
+                    <label htmlFor="quote-project-type" className="block text-xs font-bold text-[#181c1f] mb-1 flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-[#003d9b]" />
+                      Project Scale:
+                    </label>
+                    <select
+                      id="quote-project-type"
+                      value={quoteProjectScale}
+                      aria-label="Project Scale"
+                      onChange={(e) => setQuoteProjectScale(e.target.value as any)}
+                      className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-2.5 py-1.5 text-xs text-[#181c1f] font-semibold focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                    >
+                      <option value="residential">Residential Microgrid</option>
+                      <option value="commercial">Commercial C&amp;I System</option>
+                      <option value="industrial">Industrial Factory / Plant</option>
+                      <option value="utility">Utility Power Station</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="quote-quantity" className="block text-xs font-bold text-[#181c1f] mb-1">
+                      Estimated Units Quantity:
+                    </label>
+                    <input
+                      id="quote-quantity"
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={quoteQty}
+                      aria-label="Estimated Quantity"
+                      onChange={(e) => setQuoteQty(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-3 py-1.5 text-xs font-bold text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="quote-notes" className="block text-xs font-bold text-[#181c1f] mb-1">
+                    Special Specifications / Delivery Notes:
+                  </label>
+                  <textarea
+                    id="quote-notes"
+                    value={quoteNotes}
+                    aria-label="Special Specifications or Delivery Notes"
+                    onChange={(e) => setQuoteNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Specify target delivery timeline, custom enclosure needs, or grid tie requirements..."
+                    className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-[#ebeef2]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuoteItem(null);
+                      setQuoteSubmitted(false);
+                      setQuoteErrors({});
+                    }}
+                    className="px-4 py-2 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#181c1f] font-semibold text-xs rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send Sanitized Quote Request</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Catalog Item Editor / New Entry Modal */}
       {(editingItem || isAddingNew) && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans animate-fade-in">
-          <div className="bg-[#ffffff] rounded-xl max-w-xl w-full border border-[#c3c6d6] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="catalog-editor-title"
+            className="bg-[#ffffff] rounded-xl max-w-xl w-full border border-[#c3c6d6] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          >
             {/* Header */}
             <div className="px-5 py-3.5 border-b border-[#ebeef2] bg-[#f1f4f8] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-[#003d9b]" />
-                <span className="font-bold text-sm text-[#181c1f] uppercase tracking-wider">
+                <h2 id="catalog-editor-title" className="font-bold text-sm text-[#181c1f] uppercase tracking-wider">
                   {isAddingNew ? 'Add New Reference Catalog Item' : `Modify Reference Catalog: ${editingItem?.defaultName}`}
-                </span>
+                </h2>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setEditingItem(null);
                   setIsAddingNew(false);
                 }}
-                className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7]"
+                aria-label="Close catalog editor modal"
+                className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] focus:outline-none focus:ring-2 focus:ring-[#003d9b] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -602,11 +1070,14 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
 
                 {formImageUrl && (
                   <div className="flex items-center gap-2 p-2 bg-[#ffffff] border border-[#c3c6d6] rounded">
-                    <img
+                    <OptimizedImage
                       src={formImageUrl}
-                      alt="Preview"
-                      referrerPolicy="no-referrer"
-                      className="w-12 h-12 object-cover rounded border border-[#c3c6d6]"
+                      alt="Catalog Item Preview"
+                      width={100}
+                      height={100}
+                      equipmentType={formType}
+                      containerClassName="w-12 h-12 rounded border border-[#c3c6d6] overflow-hidden shrink-0"
+                      className="w-full h-full object-cover"
                     />
                     <div className="text-[10px] text-[#181c1f]">
                       <span className="font-bold block text-[#003d9b]">Photo Preview Loaded</span>

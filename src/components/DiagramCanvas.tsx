@@ -41,6 +41,7 @@ import {
 import { EQUIPMENT_PORTS, DEFAULT_LEGEND_TYPES } from '../data/presetData';
 import { useLanguage } from '../context/LanguageContext';
 import { AddLegendModal } from './AddLegendModal';
+import { OptimizedImage } from './OptimizedImage';
 
 interface DiagramCanvasProps {
   nodes: EquipmentNode[];
@@ -1078,14 +1079,13 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                     <div className="flex gap-2 items-center mt-2 flex-1">
                       {showPhotos && node.imageUrl && (
                         <div className="w-12 h-12 rounded bg-[#f1f4f8] border border-[#c3c6d6] overflow-hidden shrink-0">
-                          <img
+                          <OptimizedImage
                             src={node.imageUrl}
                             alt={node.name}
-                            referrerPolicy="no-referrer"
+                            width={100}
+                            height={100}
+                            equipmentType={node.type}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = 'none';
-                            }}
                           />
                         </div>
                       )}

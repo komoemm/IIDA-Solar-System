@@ -16,6 +16,7 @@ import {
 import { EquipmentNode, EquipmentType } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { EditEquipmentModal } from './EditEquipmentModal';
+import { OptimizedImage } from './OptimizedImage';
 
 interface EquipmentListProps {
   nodes: EquipmentNode[];
@@ -229,14 +230,13 @@ export const EquipmentList: React.FC<EquipmentListProps> = ({
                     >
                       <td className="py-2.5 px-4">
                         <div className="w-12 h-10 rounded bg-[#ebeef2] border border-[#c3c6d6] overflow-hidden">
-                          <img
+                          <OptimizedImage
                             src={node.imageUrl}
                             alt={node.name}
-                            referrerPolicy="no-referrer"
+                            width={100}
+                            height={80}
+                            equipmentType={node.type}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = 'none';
-                            }}
                           />
                         </div>
                       </td>

@@ -28,6 +28,18 @@ export const AddLegendModal: React.FC<AddLegendModalProps> = ({
   const [color, setColor] = useState('#9333ea');
   const [style, setStyle] = useState<'solid' | 'dashed' | 'dotted'>('solid');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,18 +64,25 @@ export const AddLegendModal: React.FC<AddLegendModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-[#ffffff] border border-[#c3c6d6] rounded-xl shadow-2xl w-full max-w-md overflow-hidden text-[#181c1f]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-legend-modal-title"
+        className="bg-[#ffffff] border border-[#c3c6d6] rounded-xl shadow-2xl w-full max-w-md overflow-hidden text-[#181c1f]"
+      >
         {/* Modal Header */}
         <div className="px-5 py-4 border-b border-[#c3c6d6] bg-[#f1f4f8] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cable className="w-5 h-5 text-[#003d9b]" />
-            <h3 className="font-bold text-sm text-[#181c1f]">
+            <h3 id="add-legend-modal-title" className="font-bold text-sm text-[#181c1f]">
               Add Custom Project Line Type
             </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] transition-colors"
+            aria-label="Close modal"
+            className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] focus:outline-none focus:ring-2 focus:ring-[#003d9b] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

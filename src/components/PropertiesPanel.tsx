@@ -16,6 +16,7 @@ import {
 import { EquipmentNode, Connection, PortId, CustomLegendType } from '../types';
 import { EQUIPMENT_IMAGES, EQUIPMENT_PORTS, DEFAULT_LEGEND_TYPES } from '../data/presetData';
 import { useLanguage } from '../context/LanguageContext';
+import { OptimizedImage } from './OptimizedImage';
 
 interface PropertiesPanelProps {
   node: EquipmentNode | null;
@@ -479,10 +480,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
           <div className="relative w-full h-36 bg-[#e0e3e7] rounded border border-[#c3c6d6] overflow-hidden group">
             {!imageError && customImageUrl ? (
-              <img
+              <OptimizedImage
                 src={customImageUrl}
                 alt={node.name}
-                referrerPolicy="no-referrer"
+                width={400}
+                height={225}
+                equipmentType={node.type}
                 onError={() => setImageError(true)}
                 className="w-full h-full object-cover"
               />

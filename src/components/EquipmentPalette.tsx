@@ -17,6 +17,7 @@ import {
 import { LIBRARY_ITEMS } from '../data/presetData';
 import { EquipmentType, EquipmentLibraryItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { OptimizedImage } from './OptimizedImage';
 
 interface EquipmentPaletteProps {
   onAddEquipment: (type: EquipmentType) => void;
@@ -202,14 +203,13 @@ export const EquipmentPalette: React.FC<EquipmentPaletteProps> = ({
               >
                 {/* Image / Icon Thumbnail */}
                 <div className="relative w-12 h-12 rounded bg-[#ebeef2] overflow-hidden border border-[#c3c6d6] shrink-0 flex items-center justify-center">
-                  <img
+                  <OptimizedImage
                     src={item.imageUrl}
                     alt={displayName}
-                    referrerPolicy="no-referrer"
+                    width={100}
+                    height={100}
+                    equipmentType={item.type}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
                   />
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                   <div className="absolute bottom-0.5 right-0.5 bg-white/90 rounded p-0.5 shadow-2xs">
