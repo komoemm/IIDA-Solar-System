@@ -17,6 +17,8 @@ export const translations = {
     navGallery: 'Reference Gallery',
     navSettings: 'Project Settings',
     navManual: 'User Manual',
+    navDocsCombined: 'BIM, Settings & Manual',
+    navInventoryCombined: 'Equipment & Gallery',
 
     // Top Header Actions
     undo: 'Undo',
@@ -211,6 +213,8 @@ export const translations = {
     navGallery: '参考機器ギャラリー',
     navSettings: 'プロジェクト設定',
     navManual: '操作マニュアル',
+    navDocsCombined: 'BIM・設定・マニュアル',
+    navInventoryCombined: '機器・ギャラリー',
 
     // Top Header Actions
     undo: '元に戻す',

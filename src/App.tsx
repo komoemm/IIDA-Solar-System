@@ -2,15 +2,12 @@ import React, { useState } from 'react';
 import { collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { useDiagramState } from './hooks/useDiagramState';
-import { Header } from './components/Header';
+import { Header, MainTabType } from './components/Header';
 import { EquipmentPalette } from './components/EquipmentPalette';
 import { DiagramCanvas } from './components/DiagramCanvas';
 import { PropertiesPanel } from './components/PropertiesPanel';
-import { EquipmentList } from './components/EquipmentList';
-import { BimSheetView } from './components/BimSheetView';
-import { ReferenceGallery } from './components/ReferenceGallery';
-import { ProjectSettings } from './components/ProjectSettings';
-import { UserManual } from './components/UserManual';
+import { ProjectDocsCombinedView, DocsSubTab } from './components/ProjectDocsCombinedView';
+import { EquipmentCombinedView, InventorySubTab } from './components/EquipmentCombinedView';
 import { EquipmentModal } from './components/EquipmentModal';
 import { Cloud, CheckCircle2, X, Clock, Sun, Database, GitCommit, Calendar, MessageSquare, Tag, Save, ArrowRight } from 'lucide-react';
 import { exportElementToPng, exportDiagramToSvg, exportDiagramToJson } from './utils/exportUtils';
@@ -18,9 +15,25 @@ import { EquipmentType, EquipmentLibraryItem } from './types';
 import { LIBRARY_ITEMS } from './data/presetData';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<
-    'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings' | 'manual'
-  >('canvas');
+  const [activeTab, setActiveTabState] = useState<MainTabType>('canvas');
+  const [activeDocsSubTab, setActiveDocsSubTab] = useState<DocsSubTab>('bim');
+  const [activeInventorySubTab, setActiveInventorySubTab] = useState<InventorySubTab>('inventory');
+
+  const setActiveTab = (tab: MainTabType) => {
+    if (tab === 'bim' || tab === 'settings' || tab === 'manual') {
+      setActiveTabState('docs');
+      setActiveDocsSubTab(tab as DocsSubTab);
+    } else if (tab === 'docs') {
+      setActiveTabState('docs');
+    } else if (tab === 'inventory' || tab === 'gallery') {
+      setActiveTabState('inventory');
+      if (tab === 'gallery') {
+        setActiveInventorySubTab('gallery');
+      }
+    } else {
+      setActiveTabState(tab);
+    }
+  };
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [catalogItems, setCatalogItems] = useState<EquipmentLibraryItem[]>(LIBRARY_ITEMS);
@@ -459,9 +472,9 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: Equipment Inventory & BOM */}
-        {activeTab === 'inventory' && (
-          <EquipmentList
+        {/* TAB 2: Combined Equipment Inventory & Reference Gallery */}
+        {(activeTab === 'inventory' || activeTab === 'gallery') && (
+          <EquipmentCombinedView
             nodes={nodes}
             onUpdateNode={updateNode}
             onNavigateToCanvas={(id) => {
@@ -471,22 +484,6 @@ export default function App() {
             }}
             onDeleteNode={deleteNode}
             onOpenAddModal={() => setIsAddModalOpen(true)}
-          />
-        )}
-
-        {/* TAB 3: BIM Architectural Drawing Sheet */}
-        {activeTab === 'bim' && (
-          <BimSheetView
-            nodes={nodes}
-            connections={connections}
-            metadata={metadata}
-            designNotes={designNotes}
-          />
-        )}
-
-        {/* TAB 4: Reference Photo Gallery */}
-        {activeTab === 'gallery' && (
-          <ReferenceGallery
             onAddEquipment={(type) => {
               addNode(type);
               setActiveTab('canvas');
@@ -494,22 +491,23 @@ export default function App() {
             onAddEquipmentFromCatalog={handleAddEquipmentFromCatalog}
             catalogItems={catalogItems}
             onSaveCatalogItem={handleSaveCatalogItem}
+            activeSubTab={activeInventorySubTab}
+            setActiveSubTab={setActiveInventorySubTab}
           />
         )}
 
-        {/* TAB 5: Project & Code Settings */}
-        {activeTab === 'settings' && (
-          <ProjectSettings
+        {/* TAB 4: Combined BIM Drawing Sheet, Project Settings & User Manual */}
+        {(activeTab === 'docs' || activeTab === 'bim' || activeTab === 'settings' || activeTab === 'manual') && (
+          <ProjectDocsCombinedView
+            nodes={nodes}
+            connections={connections}
             metadata={metadata}
+            designNotes={designNotes}
             onUpdateMetadata={updateMetadata}
-          />
-        )}
-
-        {/* TAB 6: User Manual & Step-by-Step Guide */}
-        {activeTab === 'manual' && (
-          <UserManual
             onOpenAddModal={() => setIsAddModalOpen(true)}
-            onNavigateTab={(tab) => setActiveTab(tab)}
+            activeSubTab={activeDocsSubTab}
+            setActiveSubTab={setActiveDocsSubTab}
+            onNavigateTab={(tab) => setActiveTab(tab as MainTabType)}
           />
         )}
       </main>

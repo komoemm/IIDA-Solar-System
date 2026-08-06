@@ -5,16 +5,21 @@ import {
   RotateCw,
   Layout,
   Globe,
-  BookOpen,
   CloudUpload,
   CloudDownload,
+  Layers,
+  Boxes,
+  Images,
+  FolderKanban,
 } from 'lucide-react';
 import { ProjectMetadata } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
+export type MainTabType = 'canvas' | 'inventory' | 'gallery' | 'docs' | 'bim' | 'settings' | 'manual';
+
 interface HeaderProps {
-  activeTab: 'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings' | 'manual';
-  setActiveTab: (tab: 'canvas' | 'inventory' | 'bim' | 'gallery' | 'settings' | 'manual') => void;
+  activeTab: MainTabType;
+  setActiveTab: (tab: MainTabType) => void;
   metadata: ProjectMetadata;
   canUndo: boolean;
   canRedo: boolean;
@@ -52,6 +57,14 @@ export const Header: React.FC<HeaderProps> = ({
   isCloudSaving = false,
 }) => {
   const { language, setLanguage, t } = useLanguage();
+
+  const isInventoryActive = activeTab === 'inventory' || activeTab === 'gallery';
+
+  const isDocsActive =
+    activeTab === 'docs' ||
+    activeTab === 'bim' ||
+    activeTab === 'settings' ||
+    activeTab === 'manual';
 
   return (
     <header className="fixed top-0 left-0 w-full z-40 bg-[#ffffff] border-b border-[#c3c6d6] shadow-sm font-sans">
@@ -158,74 +171,46 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Navigation Tabs Bar */}
+      {/* Navigation Tabs Bar with Small Icons */}
       <nav className="h-10 px-4 md:px-6 flex items-center bg-[#ffffff] border-b border-[#c3c6d6] text-xs font-bold uppercase tracking-wider">
         <div className="flex h-full gap-1">
+          {/* Main Tab 1: Diagram Canvas */}
           <button
             onClick={() => setActiveTab('canvas')}
-            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
+            className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
               activeTab === 'canvas'
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
+            <Layers className="w-4 h-4 text-[#003d9b]" />
             <span>{t('navCanvas')}</span>
           </button>
 
+          {/* Main Tab 2: Combined Equipment Inventory & Reference Gallery */}
           <button
             onClick={() => setActiveTab('inventory')}
-            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'inventory'
+            className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
+              isInventoryActive
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <span>{t('navInventory')}</span>
+            <Boxes className="w-4 h-4 text-[#003d9b]" />
+            <span>{t('navInventoryCombined')}</span>
           </button>
 
+          {/* Main Tab 3: Combined BIM, Settings & Manual */}
           <button
-            onClick={() => setActiveTab('bim')}
-            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'bim'
+            onClick={() => setActiveTab('docs')}
+            className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
+              isDocsActive
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <span>{t('navBim')}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('gallery')}
-            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'gallery'
-                ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
-                : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
-            }`}
-          >
-            <span>{t('navGallery')}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'settings'
-                ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
-                : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
-            }`}
-          >
-            <span>{t('navSettings')}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('manual')}
-            className={`px-4 flex items-center gap-1.5 border-b-2 transition-all ${
-              activeTab === 'manual'
-                ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
-                : 'border-transparent text-[#003d9b] hover:text-[#0052cc] hover:bg-[#003d9b]/10 bg-[#dae2ff]/40'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-[#003d9b]" />
-            <span>{t('navManual')}</span>
+            <FolderKanban className="w-4 h-4 text-[#003d9b]" />
+            <span>{t('navDocsCombined')}</span>
           </button>
         </div>
       </nav>

@@ -10,10 +10,13 @@ import {
   FolderPlus,
   Sparkles,
   Check,
+  DraftingCompass,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { LIBRARY_ITEMS, EQUIPMENT_IMAGES } from '../data/presetData';
 import { EquipmentType, EquipmentLibraryItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { EquipmentSketchVector } from './EquipmentSketchVector';
 
 interface ReferenceGalleryProps {
   onAddEquipment: (type: EquipmentType) => void;
@@ -45,7 +48,13 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
   const [selectedPhotoItem, setSelectedPhotoItem] = useState<EquipmentLibraryItem | null>(null);
   const [editingItem, setEditingItem] = useState<EquipmentLibraryItem | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [displayMode, setDisplayMode] = useState<'sketch' | 'photo'>('sketch');
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const { language, t } = useLanguage();
+
+  const handleImageError = (url: string) => {
+    setFailedImages((prev) => ({ ...prev, [url]: true }));
+  };
 
   // Form state for catalog editor modal
   const [formType, setFormType] = useState<EquipmentType>('pv_array');
@@ -162,17 +171,48 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
               {t('refCatalog')}
             </h1>
             <p className="text-xs text-[#434654] mt-0.5">
-              Real-world reference photos, physical specifications, and documentation sheets for hybrid solar BIM design.
+              Verified CAD vector schematics, electrical ratings, and technical documentation sheets for Solar & Hybrid Energy systems.
             </p>
           </div>
 
-          <button
-            onClick={openNewModal}
-            className="px-4 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Add Catalog Item</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* Display Mode Toggle */}
+            <div className="flex items-center bg-[#f1f4f8] p-1 rounded-lg border border-[#c3c6d6]">
+              <button
+                onClick={() => setDisplayMode('sketch')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all ${
+                  displayMode === 'sketch'
+                    ? 'bg-[#003d9b] text-white shadow-xs'
+                    : 'text-[#434654] hover:text-[#181c1f]'
+                }`}
+                title="Display technical CAD SVG vector sketch previews"
+              >
+                <DraftingCompass className="w-3.5 h-3.5" />
+                <span>Vector Sketch</span>
+              </button>
+
+              <button
+                onClick={() => setDisplayMode('photo')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all ${
+                  displayMode === 'photo'
+                    ? 'bg-[#003d9b] text-white shadow-xs'
+                    : 'text-[#434654] hover:text-[#181c1f]'
+                }`}
+                title="Display catalog photo previews"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>Photo View</span>
+              </button>
+            </div>
+
+            <button
+              onClick={openNewModal}
+              className="px-3.5 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add Item</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter & Search Bar */}
@@ -207,57 +247,66 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
 
         {/* Reference Gallery Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item, idx) => (
-            <div
-              key={`${item.type}-${item.defaultName}-${idx}`}
-              className="bg-[#ffffff] border border-[#c3c6d6] hover:border-[#003d9b] rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
-            >
-              {/* Photo Frame */}
-              <div className="relative w-full h-48 bg-[#ebeef2] overflow-hidden">
-                <img
-                  src={item.imageUrl}
-                  alt={item.defaultName}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          {filteredItems.map((item, idx) => {
+            const isImageFailed = failedImages[item.imageUrl];
+            const useSketch = displayMode === 'sketch' || isImageFailed;
 
-                {/* Top Category Badge */}
-                <span className="absolute top-3 left-3 bg-white/95 text-[#003d9b] font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded shadow-2xs">
-                  {item.category}
-                </span>
+            return (
+              <div
+                key={`${item.type}-${item.defaultName}-${idx}`}
+                className="bg-[#ffffff] border border-[#c3c6d6] hover:border-[#003d9b] rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
+              >
+                {/* Equipment Vector Sketch or Photo Frame */}
+                <div className="relative w-full h-48 bg-[#0f172a] overflow-hidden">
+                  {useSketch ? (
+                    <EquipmentSketchVector type={item.type} />
+                  ) : (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.defaultName}
+                      referrerPolicy="no-referrer"
+                      onError={() => handleImageError(item.imageUrl)}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
-                {/* Card Top Action Buttons */}
-                <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                  <button
-                    onClick={() => openEditModal(item)}
-                    className="bg-black/60 hover:bg-[#003d9b] text-white p-1.5 rounded transition-colors"
-                    title="Modify Catalog Reference"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
+                  {/* Top Category Badge */}
+                  <span className="absolute top-3 left-3 bg-white/95 text-[#003d9b] font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded shadow-2xs">
+                    {item.category}
+                  </span>
 
-                  <button
-                    onClick={() => setSelectedPhotoItem(item)}
-                    className="bg-black/60 hover:bg-black text-white p-1.5 rounded transition-colors"
-                    title="Expand High-Res Photo"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
+                  {/* Card Top Action Buttons */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+                    <button
+                      onClick={() => openEditModal(item)}
+                      className="bg-black/60 hover:bg-[#003d9b] text-white p-1.5 rounded transition-colors"
+                      title="Modify Catalog Reference"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedPhotoItem(item)}
+                      className="bg-black/60 hover:bg-black text-white p-1.5 rounded transition-colors"
+                      title="Expand Technical CAD Schematic"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Title overlay */}
+                  <div className="absolute bottom-3 left-3 right-3 text-white">
+                    <div className="font-bold text-sm leading-snug drop-shadow-xs">
+                      {item.defaultName}
+                    </div>
+                    <div className="text-xs text-white/85 font-mono mt-0.5">
+                      {item.defaultManufacturer} • {item.defaultModel}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Title overlay */}
-                <div className="absolute bottom-3 left-3 right-3 text-white">
-                  <div className="font-bold text-sm leading-snug drop-shadow-xs">
-                    {item.defaultName}
-                  </div>
-                  <div className="text-xs text-white/85 font-mono mt-0.5">
-                    {item.defaultManufacturer} • {item.defaultModel}
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Body Specs */}
+                {/* Card Body Specs */}
               <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                 <p className="text-xs text-[#434654] leading-relaxed line-clamp-2">
                   {item.description}
@@ -298,11 +347,12 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
                 </div>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       </div>
 
-      {/* High-Res Photo Preview Modal */}
+      {/* High-Res Photo / Vector Sketch Preview Modal */}
       {selectedPhotoItem && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-fade-in"
@@ -312,16 +362,21 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
             className="bg-[#ffffff] rounded-xl max-w-2xl w-full overflow-hidden shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative h-80 bg-[#181c1f]">
-              <img
-                src={selectedPhotoItem.imageUrl}
-                alt={selectedPhotoItem.defaultName}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-contain"
-              />
+            <div className="relative h-80 bg-[#0f172a] overflow-hidden">
+              {displayMode === 'sketch' || failedImages[selectedPhotoItem.imageUrl] ? (
+                <EquipmentSketchVector type={selectedPhotoItem.type} />
+              ) : (
+                <img
+                  src={selectedPhotoItem.imageUrl}
+                  alt={selectedPhotoItem.defaultName}
+                  referrerPolicy="no-referrer"
+                  onError={() => handleImageError(selectedPhotoItem.imageUrl)}
+                  className="w-full h-full object-contain"
+                />
+              )}
               <button
                 onClick={() => setSelectedPhotoItem(null)}
-                className="absolute top-3 right-3 bg-black/70 hover:bg-black text-white p-1.5 rounded-full"
+                className="absolute top-3 right-3 bg-black/70 hover:bg-black text-white p-1.5 rounded-full z-10"
               >
                 <X className="w-5 h-5" />
               </button>
