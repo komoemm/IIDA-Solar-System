@@ -418,8 +418,6 @@ export default function App() {
               }}
               designNotes={designNotes}
               onChangeDesignNotes={updateDesignNotes}
-              onExportPng={handleExportPng}
-              onExportSvg={handleExportSvg}
               onPrintSheet={handlePrintSheet}
               showPalette={showPalette}
               onTogglePalette={() => setShowPalette(!showPalette)}

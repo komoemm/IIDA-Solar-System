@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Printer,
-  Download,
-  FileCode,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -79,9 +77,7 @@ interface DiagramCanvasProps {
   designNotes: string;
   onChangeDesignNotes: (notes: string) => void;
 
-  // BIM Export Handlers
-  onExportPng?: () => void;
-  onExportSvg?: () => void;
+  // BIM Print/Export Handler
   onPrintSheet?: () => void;
 
   // Panel Toggles
@@ -121,8 +117,6 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   onAddEquipmentFromDrop,
   designNotes,
   onChangeDesignNotes,
-  onExportPng,
-  onExportSvg,
   onPrintSheet,
   showPalette = true,
   onTogglePalette,
@@ -672,35 +666,15 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
 
           <div className="w-[1px] h-5 bg-[#c3c6d6] my-auto mx-1" />
 
-          {/* Embedded BIM Export Controls */}
+          {/* Embedded BIM Print / Export Control */}
           <button
             onClick={onPrintSheet || (() => window.print())}
             className="px-2.5 py-1 text-xs font-bold text-[#003d9b] bg-[#dae2ff]/60 hover:bg-[#dae2ff] rounded flex items-center gap-1 transition-colors"
-            title="Print BIM Drawing Sheet"
+            title="Print or Export Drawing Sheet"
           >
             <Printer className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Print Sheet</span>
           </button>
-          {onExportPng && (
-            <button
-              onClick={onExportPng}
-              className="px-2.5 py-1 text-xs font-bold text-[#434654] hover:text-[#003d9b] hover:bg-[#f1f4f8] rounded flex items-center gap-1 transition-colors"
-              title="Export Canvas as PNG Image"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export PNG</span>
-            </button>
-          )}
-          {onExportSvg && (
-            <button
-              onClick={onExportSvg}
-              className="px-2.5 py-1 text-xs font-bold text-[#434654] hover:text-[#003d9b] hover:bg-[#f1f4f8] rounded flex items-center gap-1 transition-colors"
-              title="Export Vector SVG Drawing"
-            >
-              <FileCode className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export SVG</span>
-            </button>
-          )}
 
           <div className="w-[1px] h-5 bg-[#c3c6d6] my-auto mx-1" />
 

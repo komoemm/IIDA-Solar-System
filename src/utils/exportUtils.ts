@@ -1,4 +1,4 @@
-import { toPng } from 'html-to-image';
+import { toPng, toCanvas, toSvg } from 'html-to-image';
 import { EquipmentNode, Connection, ProjectMetadata, DiagramState } from '../types';
 
 export async function exportElementToPng(elementId: string, filename = 'hybrid-solar-bim-diagram.png') {
@@ -8,40 +8,69 @@ export async function exportElementToPng(elementId: string, filename = 'hybrid-s
     return;
   }
 
-  try {
-    const dataUrl = await toPng(node, {
-      cacheBust: false,
-      quality: 0.95,
-      pixelRatio: 2,
-      backgroundColor: '#f7fafe',
-      skipFonts: true,
-      filter: (domNode: HTMLElement) => {
-        // Skip script or problematic link/iframe elements
-        if (domNode.tagName === 'LINK' || domNode.tagName === 'SCRIPT') return false;
-        return true;
-      },
-    });
+  const exportOptions = {
+    fontEmbedCSS: '',
+    skipFonts: true,
+    cacheBust: false,
+    quality: 0.95,
+    pixelRatio: 2,
+    backgroundColor: '#f7fafe',
+    filter: (domNode: HTMLElement) => {
+      if (domNode.tagName === 'LINK' || domNode.tagName === 'SCRIPT') return false;
+      return true;
+    },
+  };
 
+  try {
+    const dataUrl = await toPng(node, exportOptions);
     const link = document.createElement('a');
     link.download = filename;
     link.href = dataUrl;
     link.click();
   } catch (err) {
-    console.warn('First PNG export attempt failed, retrying with fallback settings:', err);
+    console.warn('Primary PNG export failed, trying canvas rasterization:', err);
     try {
-      const dataUrl = await toPng(node, {
-        quality: 0.85,
-        pixelRatio: 1.5,
-        backgroundColor: '#f7fafe',
+      const canvas = await toCanvas(node, {
+        fontEmbedCSS: '',
         skipFonts: true,
+        backgroundColor: '#f7fafe',
+        pixelRatio: 1.5,
       });
+      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = filename;
       link.href = dataUrl;
       link.click();
-    } catch (fallbackErr) {
-      console.error('Error generating PNG export:', fallbackErr);
-      alert('PNG export encounter a browser style embedding limitation. Please use the "Export SVG" button for high-resolution vector output.');
+    } catch (canvasErr) {
+      console.warn('Canvas rasterization failed, attempting SVG image conversion:', canvasErr);
+      try {
+        const svgUrl = await toSvg(node, {
+          fontEmbedCSS: '',
+          skipFonts: true,
+          backgroundColor: '#f7fafe',
+        });
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = node.clientWidth * 2 || 1920;
+          canvas.height = node.clientHeight * 2 || 1080;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#f7fafe';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const pngUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = pngUrl;
+            link.click();
+          }
+        };
+        img.src = svgUrl;
+      } catch (fallbackErr) {
+        console.error('Error generating PNG export:', fallbackErr);
+        alert('PNG export was hindered by browser restrictions. Please click "Export SVG" for high-definition vector output or use "Print Sheet".');
+      }
     }
   }
 }
