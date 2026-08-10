@@ -373,7 +373,7 @@ export default function App() {
   const handleLoadOfficialFactorySld = () => {
     loadState(OFFICIAL_FACTORY_SLD_PRESET);
     setActiveTab('canvas');
-    setCloudNotice('Loaded 124.8 kWp Official Factory Single Line Diagram (SLD) Preset!');
+    setCloudNotice('Loaded 124.8 kWp IMM Single Line Diagram (SLD) Preset!');
     setTimeout(() => setCloudNotice(null), 4000);
   };
 

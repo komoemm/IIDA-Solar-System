@@ -73,10 +73,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={() => setIsDocsOpen(!isDocsOpen)}
                   className="px-2.5 py-1 text-xs font-medium bg-amber-500/10 text-amber-800 border border-amber-500/30 hover:bg-amber-500/20 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                  title="Factory System Blueprint Documentation"
+                  title="IMM System Blueprint Documentation"
                 >
                   <FileText className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Factory System Blueprint</span>
+                  <span>IMM System Blueprint</span>
                   <ChevronDown className={`w-3 h-3 text-amber-600 transition-transform duration-200 ${isDocsOpen ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -125,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <Zap className="w-4 h-4 text-[#003d9b] shrink-0" />
                       <div className="flex flex-col flex-1 min-w-0">
-                        <span className="truncate">⚡ Load Official Factory SLD to Canvas</span>
+                        <span className="truncate">⚡ Load IMM SLD to Canvas</span>
                         <span className="text-[10px] text-[#003d9b]/80 font-normal truncate">124.8 kWp PV + 286.7 kWh BESS Preset</span>
                       </div>
                     </button>

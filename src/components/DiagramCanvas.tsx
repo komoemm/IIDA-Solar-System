@@ -645,12 +645,12 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {onResetToDefault && (
             <button
               onClick={() => setShowResetConfirmModal(true)}
-              aria-label="Reset to Official SLD"
+              aria-label="Reset to IMM SLD"
               className="px-2.5 py-1 text-xs font-bold rounded transition-colors bg-[#dae2ff] text-[#003d9b] hover:bg-[#c1d3ff] flex items-center gap-1.5 shadow-xs"
-              title="Reset canvas to official IIDA 124.8 kWp Solis Hybrid System topology"
+              title="Reset canvas to IMM 124.8 kWp Solis Hybrid System topology"
             >
               <RotateCcw className="w-3.5 h-3.5 text-[#003d9b]" />
-              <span className="hidden sm:inline">Reset to Official SLD</span>
+              <span className="hidden sm:inline">Reset to IMM SLD</span>
             </button>
           )}
 
@@ -782,7 +782,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
 
               <div className="bg-[#f1f4f8] border border-[#dce2f0] rounded-xl p-3.5 w-full text-left text-xs text-[#2e313d] space-y-1.5">
                 <span className="font-bold text-[#003d9b] block uppercase tracking-wider text-[10px]">
-                  Official System Dataset Topology:
+                  IMM System Dataset Topology:
                 </span>
                 <ul className="list-disc list-inside space-y-1 text-[#434654] font-sans">
                   <li>Trina 710W (85.2 kWp) & Jinko 550W (39.6 kWp) Solar Panels</li>
@@ -802,7 +802,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                   className="w-full py-3.5 px-6 rounded-xl bg-[#003d9b] hover:bg-[#002b70] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                 >
                   <Zap className="w-4.5 h-4.5 fill-white" />
-                  <span>⚡ Load Official IIDA Factory SLD (124.8 kWp)</span>
+                  <span>⚡ Load IMM SLD (124.8 kWp)</span>
                 </button>
               )}
             </div>
@@ -1474,7 +1474,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                 </div>
                 <div>
                   <h3 id="reset-modal-title" className="text-lg font-bold text-[#181c1f]">
-                    Reset to Official Factory SLD
+                    Reset to IMM SLD
                   </h3>
                   <p className="text-xs text-[#737685] font-mono">
                     IMM-FAC-SLD-124.8K Topology
@@ -1492,7 +1492,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
 
             <div className="space-y-2 bg-[#f8fafc] border border-[#e2e8f0] p-3.5 rounded-xl text-xs text-[#334155]">
               <p className="font-semibold text-[#0f172a] text-sm">
-                Reset canvas to official IIDA 124.8 kWp Solis Hybrid System topology?
+                Reset canvas to IMM 124.8 kWp Solis Hybrid System topology?
               </p>
               <p className="text-[#475569] leading-relaxed">
                 This action will restore all equipment nodes, wire interconnects, electrical ratings, and technical notes to the factory reference dataset (124.8 kWp PV Array + 286.7 kWh Eenovance BESS).

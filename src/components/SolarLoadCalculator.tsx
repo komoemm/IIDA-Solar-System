@@ -513,7 +513,7 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold text-[#181c1f]">
-                Factory Solar Plant Specs &amp; M&amp;E Load Calculator
+                IMM Solar Plant Specs &amp; M&amp;E Load Calculator
               </h2>
               <div className="flex items-center gap-2 bg-[#e0e7ff] text-[#003d9b] text-xs font-bold px-3 py-1 rounded-full border border-[#a5b4fc] shadow-2xs">
                 <span className="relative flex h-2 w-2">
@@ -537,10 +537,10 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
           <button
             onClick={handleResetDefaults}
             className="px-3.5 py-1.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] text-xs font-bold rounded flex items-center gap-1.5 transition-colors cursor-pointer border border-[#c3c6d6]"
-            title="Reset both Diagram Canvas and Load Calculator to Official Factory Specs"
+            title="Reset both Diagram Canvas and Load Calculator to IMM SLD Specs"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset to Official SLD</span>
+            <span>Reset to IMM SLD</span>
           </button>
         </div>
       </header>

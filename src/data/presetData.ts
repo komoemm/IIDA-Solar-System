@@ -528,21 +528,21 @@ export const INITIAL_CONNECTIONS: Connection[] = [
 ];
 
 export const DEFAULT_METADATA: ProjectMetadata = {
-  title: 'Official Factory Solar System Single Line Diagram (124.8 kWp)',
+  title: 'IMM Solar System Single Line Diagram (124.8 kWp)',
   projectNumber: 'IMM-FAC-SLD-2026',
   clientName: 'IIDA ELECTRONICS(MYANMAR) CO.,LTD.',
   siteAddress: 'Yangon Industrial Zone, Myanmar (https://www.iida-imm.com/)',
   designer: 'IIDA Technical Engineering Dept.',
   checker: 'Chief Electrical Systems Auditor',
-  revision: 'Rev 1.0 - Official Factory Single Line Diagram',
+  revision: 'Rev 1.0 - IMM Single Line Diagram',
   date: '2026-08-10',
   drawingNumber: 'IMM-SLD-124.8K',
   scale: 'NTS / ANSI D Landscape',
   interconnectionStandard: 'IEC 60364 / IEEE 1547 / YESC Grid Standard',
-  notes: 'Official 124.8 kWp PV + 286.7 kWh BESS Factory Single Line Diagram (SLD) engineered for IIDA Electronics (Myanmar) Co., Ltd. Sourced from https://link.imm-it.com/sld.pdf and https://link.imm-it.com/explain.html.',
+  notes: 'IMM 124.8 kWp PV + 286.7 kWh BESS Single Line Diagram (SLD) engineered for IIDA Electronics (Myanmar) Co., Ltd. Sourced from https://link.imm-it.com/sld.pdf and https://link.imm-it.com/explain.html.',
 };
 
-export const INITIAL_DESIGN_NOTES = `OFFICIAL FACTORY SOLAR PLANT SCHEMATIC & TECHNICAL SPECIFICATIONS:
+export const INITIAL_DESIGN_NOTES = `IMM SOLAR PLANT SCHEMATIC & TECHNICAL SPECIFICATIONS:
 1. PV GENERATION (124.8 kWp Total Capacity):
    • PV Array A (PV-01): 120 Pcs Trina Solar 710W Monocrystalline Modules (85.2 kWp) wired with 6mm² PV Cables.
    • PV Array B (PV-02): 72 Pcs Jinko Solar 550W N-Type Modules (39.6 kWp) wired with 6mm² PV Cables.
@@ -560,7 +560,7 @@ export const INITIAL_DESIGN_NOTES = `OFFICIAL FACTORY SOLAR PLANT SCHEMATIC & TE
    • Critical Load COS (COS-01): Inverter Essential Loads Backup supplying Priority 1 essential loads 24/7.
    • Non-Essential Heavy Load COS (COS-02): Direct Utility/Genset Operation for heavy factory machinery.`;
 
-// Official 124.8 kWp / 286.7 kWh Factory System Single Line Diagram Preset
+// IMM 124.8 kWp / 286.7 kWh System Single Line Diagram Preset
 export const OFFICIAL_FACTORY_SLD_NODES: EquipmentNode[] = [
   {
     id: 'PV-TRINA-710',
@@ -875,21 +875,21 @@ export const OFFICIAL_FACTORY_SLD_CONNECTIONS: Connection[] = [
 ];
 
 export const OFFICIAL_FACTORY_SLD_METADATA: ProjectMetadata = {
-  title: 'Official Factory Solar & Hybrid System SLD (124.8 kWp / 286.7 kWh)',
+  title: 'IMM Solar System Single Line Diagram (124.8 kWp)',
   projectNumber: 'IMM-FAC-SLD-2026',
   clientName: 'IIDA ELECTRONICS(MYANMAR) CO.,LTD.',
   siteAddress: 'Yangon Industrial Zone, Myanmar (https://www.iida-imm.com/)',
   designer: 'IIDA Technical Engineering Dept.',
   checker: 'Chief Electrical Systems Auditor',
-  revision: 'Rev 1.0 - Official Factory Single Line Diagram',
+  revision: 'Rev 1.0 - IMM Single Line Diagram',
   date: '2026-08-10',
   drawingNumber: 'IMM-SLD-124.8K',
   scale: 'NTS / ANSI D Landscape',
   interconnectionStandard: 'IEC 60364 / IEEE 1547 / YESC Grid Standard',
-  notes: 'Official 124.8 kWp PV + 286.7 kWh BESS Factory Single Line Diagram (SLD) engineered for IIDA Electronics (Myanmar) Co., Ltd. Optimized for 08:00-17:00 Day Shift operation with Solis S6 dual parallel hybrid inverters and 3-stage EMS control.',
+  notes: 'IMM 124.8 kWp PV + 286.7 kWh BESS Single Line Diagram (SLD) engineered for IIDA Electronics (Myanmar) Co., Ltd. Optimized for 08:00-17:00 Day Shift operation with Solis S6 dual parallel hybrid inverters and 3-stage EMS control.',
 };
 
-export const OFFICIAL_FACTORY_SLD_NOTES = `OFFICIAL FACTORY SOLAR PLANT SCHEMATIC & TECHNICAL SPECIFICATIONS:
+export const OFFICIAL_FACTORY_SLD_NOTES = `IMM SOLAR PLANT SCHEMATIC & TECHNICAL SPECIFICATIONS:
 1. SOLAR GENERATION (124.8 kWp Total Capacity):
    • PV Array 1: 120 Pcs Trina Solar 710W Monocrystalline Bifacial Modules (85.2 kWp)
    • PV Array 2: 72 Pcs Jinko Solar 550W N-Type High Efficiency Modules (39.6 kWp)
