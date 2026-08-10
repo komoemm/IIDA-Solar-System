@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Boxes, Images, Calculator } from 'lucide-react';
 import { EquipmentNode, EquipmentType, EquipmentLibraryItem } from '../types';
 import { EquipmentList } from './EquipmentList';
-import { ReferenceGallery } from './ReferenceGallery';
-import { SolarLoadCalculator } from './SolarLoadCalculator';
 import { useLanguage } from '../context/LanguageContext';
+
+const ReferenceGallery = lazy(() =>
+  import('./ReferenceGallery').then((m) => ({ default: m.ReferenceGallery }))
+);
+const SolarLoadCalculator = lazy(() =>
+  import('./SolarLoadCalculator').then((m) => ({ default: m.SolarLoadCalculator }))
+);
+
+const SubTabLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex-1 flex flex-col items-center justify-center p-12 text-[#003d9b] min-h-[350px]">
+    <div className="w-8 h-8 border-3 border-[#003d9b] border-t-transparent rounded-full animate-spin mb-3" />
+    <span className="text-xs font-bold font-mono uppercase tracking-wider">{label}</span>
+  </div>
+);
 
 export type InventorySubTab = 'inventory' | 'gallery' | 'calculator';
 
@@ -110,15 +122,21 @@ export const EquipmentCombinedView: React.FC<EquipmentCombinedViewProps> = ({
           )}
 
           {activeSubTab === 'gallery' && (
-            <ReferenceGallery
-              onAddEquipment={onAddEquipment}
-              onAddEquipmentFromCatalog={onAddEquipmentFromCatalog}
-              catalogItems={catalogItems}
-              onSaveCatalogItem={onSaveCatalogItem}
-            />
+            <Suspense fallback={<SubTabLoadingFallback label="Loading Catalog Reference Gallery..." />}>
+              <ReferenceGallery
+                onAddEquipment={onAddEquipment}
+                onAddEquipmentFromCatalog={onAddEquipmentFromCatalog}
+                catalogItems={catalogItems}
+                onSaveCatalogItem={onSaveCatalogItem}
+              />
+            </Suspense>
           )}
 
-          {activeSubTab === 'calculator' && <SolarLoadCalculator />}
+          {activeSubTab === 'calculator' && (
+            <Suspense fallback={<SubTabLoadingFallback label="Loading Solar Load & EMS Calculator..." />}>
+              <SolarLoadCalculator />
+            </Suspense>
+          )}
         </div>
 
         {/* Localized Footer */}

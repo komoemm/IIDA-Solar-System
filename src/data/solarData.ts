@@ -6,7 +6,9 @@
  * - Quotation request input sanitization & validation routines
  */
 
-import { EquipmentLibraryItem, EquipmentType } from '../types';
+import { EquipmentLibraryItem, EquipmentType, LoadItem, LoadCategory } from '../types';
+
+export type { LoadItem, LoadCategory };
 
 // ============================================================================
 // 1. REGIONAL & ENGINEERING CONSTANTS
@@ -139,18 +141,8 @@ export const SOLAR_PRODUCT_CATALOG: SolarCatalogItem[] = [
 ];
 
 // ============================================================================
-// 3. CALCULATION FORMULAS & EDGE-CASE FALLBACK GUARDS
+// 3. CALCULATION FORMULAS & EMS SIMULATION TYPES
 // ============================================================================
-
-export interface LoadItem {
-  id: string;
-  name: string;
-  category: 'Essential' | 'Heavy' | 'General';
-  quantity: number;
-  watts: number;
-  hoursPerDay: number;
-  surgeFactor: number;
-}
 
 export interface SolarSizingInput {
   loadItems: LoadItem[];
@@ -168,21 +160,208 @@ export interface CalculationWarning {
   type: 'warning' | 'info' | 'error';
 }
 
+export interface CategoryPowerBreakdown {
+  category: LoadCategory;
+  activeKw: number;
+  apparentKva: number;
+  reactiveKvar: number;
+  percentageOfTotal: number;
+}
+
+export interface EmsHourlyStep {
+  hour: number;
+  timeLabel: string;
+  loadKw: number;
+  solarKw: number;
+  batteryKw: number; // positive = discharging, negative = charging
+  gridKw: number;
+  socPercent: number;
+  stage: 'Solar' | 'Battery' | 'Grid';
+  solarToLoadKw: number;
+  solarToBatteryKw: number;
+}
+
+export interface EmsSimulationResult {
+  hourlyProfile: EmsHourlyStep[];
+  totalDailySolarKwh: number;
+  totalDailyLoadKwh: number;
+  totalDailyGridImportKwh: number;
+  totalBatteryDischargedKwh: number;
+  totalBatteryChargedKwh: number;
+  solarSelfConsumptionRatio: number; // %
+  gridDependenceRatio: number; // %
+  minSocPercent: number;
+  maxSocPercent: number;
+}
+
 export interface SolarSizingResult {
-  totalConnectedKw: number;
+  totalInstalledKw: number;
+  totalConnectedKw: number; // Active Power P (kW) with diversity factor
+  totalApparentKva: number; // Apparent Power S (kVA)
+  totalReactiveKvar: number; // Reactive Power Q (kVAR)
+  systemPowerFactor: number; // Weighted system power factor
   dailyKwh: number;
   peakSurgeKw: number;
+  peakSurgeKva: number;
   recommendedPvKw: number;
   recommendedBatteryKwh: number;
   recommendedInverterKw: number;
   maxDcCurrentAmps: number;
   recommendedFuseAmps: number;
+  categoryBreakdown: CategoryPowerBreakdown[];
+  emsSimulation: EmsSimulationResult;
   warnings: CalculationWarning[];
 }
 
 /**
- * Calculates solar PV array, battery storage, inverter sizing, and fuse amperage
- * with edge-case validation, sanitization of negative/zero values, and fallback recommendations.
+ * 3-Stage Energy Priority Flow Simulator (Solar -> Battery -> Grid)
+ * Stage 1 (Solar Priority): Solar generation supplies load directly; surplus charges battery up to 100% SoC.
+ * Stage 2 (Battery Priority): If Solar < Load, Battery discharges to fill deficit down to 20% SoC.
+ * Stage 3 (Grid Priority): If Solar + Battery < Load, remaining deficit is imported from Grid.
+ */
+export function runEmsSimulation(
+  pvKw: number,
+  batteryKwh: number,
+  dailyLoadKwh: number,
+  peakSunHours: number,
+  minSoc: number = 20
+): EmsSimulationResult {
+  const hourlyProfile: EmsHourlyStep[] = [];
+  const psh = Math.max(1.0, peakSunHours);
+  const sysLoss = REGIONAL_SOLAR_CONSTANTS.SYSTEM_LOSS_FACTOR;
+
+  // Normalized bell-curve daylight factors for solar generation (06:00 to 18:00)
+  const solarFactors = [
+    0, 0, 0, 0, 0, 0, // 00:00 - 05:00
+    0.10, 0.35, 0.65, 0.88, 0.98, 1.0, // 06:00 - 11:00
+    0.98, 0.88, 0.65, 0.35, 0.10, 0, // 12:00 - 17:00
+    0, 0, 0, 0, 0, 0, // 18:00 - 23:00
+  ];
+  const sumSolarFactors = solarFactors.reduce((a, b) => a + b, 0);
+  const targetDailySolarKwh = pvKw * psh * sysLoss;
+
+  // Industrial factory 24h demand distribution curve (normalized)
+  const loadFactors = [
+    0.30, 0.28, 0.25, 0.25, 0.30, 0.45, // 00:00 - 05:00 (Night base load)
+    0.65, 0.85, 1.00, 1.00, 0.95, 0.90, // 06:00 - 11:00 (Day shift peak)
+    0.85, 0.95, 1.00, 0.90, 0.75, 0.60, // 12:00 - 17:00 (Afternoon peak & shift change)
+    0.55, 0.50, 0.45, 0.40, 0.35, 0.30, // 18:00 - 23:00 (Evening operations)
+  ];
+  const sumLoadFactors = loadFactors.reduce((a, b) => a + b, 0);
+
+  let currentSoc = 50.0; // Start simulation at 50% SoC
+  let totalSolarGenKwh = 0;
+  let totalLoadKwh = 0;
+  let totalGridKwh = 0;
+  let totalBatDischarged = 0;
+  let totalBatCharged = 0;
+  let minSocSeen = 100;
+  let maxSocSeen = 0;
+
+  for (let h = 0; h < 24; h++) {
+    const timeLabel = `${String(h).padStart(2, '0')}:00`;
+    const hourSolarKw = sumSolarFactors > 0 ? (solarFactors[h] / sumSolarFactors) * targetDailySolarKwh : 0;
+    const hourLoadKw = sumLoadFactors > 0 ? (loadFactors[h] / sumLoadFactors) * dailyLoadKwh : 0;
+
+    totalSolarGenKwh += hourSolarKw;
+    totalLoadKwh += hourLoadKw;
+
+    let solarToLoadKw = 0;
+    let solarToBatteryKw = 0;
+    let batteryKw = 0; // + discharge, - charge
+    let gridKw = 0;
+    let stage: 'Solar' | 'Battery' | 'Grid' = 'Solar';
+
+    const currentBatKwh = (currentSoc / 100) * batteryKwh;
+    const minBatKwh = (minSoc / 100) * batteryKwh;
+    const maxBatKwh = batteryKwh;
+
+    if (hourSolarKw >= hourLoadKw) {
+      // Stage 1: Solar Priority
+      stage = 'Solar';
+      solarToLoadKw = hourLoadKw;
+      const surplusSolar = hourSolarKw - hourLoadKw;
+
+      const roomInBatKwh = Math.max(0, maxBatKwh - currentBatKwh);
+      const chargeKw = Math.min(surplusSolar, roomInBatKwh);
+
+      solarToBatteryKw = chargeKw;
+      batteryKw = -chargeKw; // charging
+      totalBatCharged += chargeKw;
+      gridKw = 0;
+
+      const newBatKwh = currentBatKwh + chargeKw;
+      currentSoc = batteryKwh > 0 ? (newBatKwh / batteryKwh) * 100 : 0;
+    } else {
+      // Solar < Load: Need battery or grid
+      solarToLoadKw = hourSolarKw;
+      const deficitKw = hourLoadKw - hourSolarKw;
+
+      const availBatDischargeKwh = Math.max(0, currentBatKwh - minBatKwh);
+      const dischargeKw = Math.min(deficitKw, availBatDischargeKwh);
+
+      batteryKw = dischargeKw; // discharging
+      totalBatDischarged += dischargeKw;
+
+      const remainingDeficitKw = deficitKw - dischargeKw;
+
+      if (dischargeKw > 0 && remainingDeficitKw <= 0.05) {
+        stage = 'Battery';
+      } else if (remainingDeficitKw > 0) {
+        stage = 'Grid';
+        gridKw = remainingDeficitKw;
+        totalGridKwh += remainingDeficitKw;
+      } else {
+        stage = 'Battery';
+      }
+
+      const newBatKwh = currentBatKwh - dischargeKw;
+      currentSoc = batteryKwh > 0 ? (newBatKwh / batteryKwh) * 100 : 0;
+    }
+
+    currentSoc = Math.max(minSoc, Math.min(100, currentSoc));
+    minSocSeen = Math.min(minSocSeen, currentSoc);
+    maxSocSeen = Math.max(maxSocSeen, currentSoc);
+
+    hourlyProfile.push({
+      hour: h,
+      timeLabel,
+      loadKw: Math.round(hourLoadKw * 100) / 100,
+      solarKw: Math.round(hourSolarKw * 100) / 100,
+      batteryKw: Math.round(batteryKw * 100) / 100,
+      gridKw: Math.round(gridKw * 100) / 100,
+      socPercent: Math.round(currentSoc * 10) / 10,
+      stage,
+      solarToLoadKw: Math.round(solarToLoadKw * 100) / 100,
+      solarToBatteryKw: Math.round(solarToBatteryKw * 100) / 100,
+    });
+  }
+
+  const solarSelfConsumption = totalSolarGenKwh > 0
+    ? Math.min(100, Math.round(((totalLoadKwh + totalBatCharged - totalGridKwh) / totalSolarGenKwh) * 100))
+    : 0;
+
+  const gridDependence = totalLoadKwh > 0
+    ? Math.round((totalGridKwh / totalLoadKwh) * 100)
+    : 0;
+
+  return {
+    hourlyProfile,
+    totalDailySolarKwh: Math.round(totalSolarGenKwh * 10) / 10,
+    totalDailyLoadKwh: Math.round(totalLoadKwh * 10) / 10,
+    totalDailyGridImportKwh: Math.round(totalGridKwh * 10) / 10,
+    totalBatteryDischargedKwh: Math.round(totalBatDischarged * 10) / 10,
+    totalBatteryChargedKwh: Math.round(totalBatCharged * 10) / 10,
+    solarSelfConsumptionRatio: Math.max(0, solarSelfConsumption),
+    gridDependenceRatio: Math.max(0, gridDependence),
+    minSocPercent: Math.round(minSocSeen),
+    maxSocPercent: Math.round(maxSocSeen),
+  };
+}
+
+/**
+ * Calculates industrial M&E electrical sizing (Active Power kW, Reactive Power kVAR, Apparent Power kVA),
+ * system overall power factor, and 3-stage EMS simulation profile.
  */
 export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult {
   const warnings: CalculationWarning[] = [];
@@ -216,28 +395,53 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
     ? Number(input.systemVoltage)
     : REGIONAL_SOLAR_CONSTANTS.DEFAULT_SYSTEM_VOLTAGE;
 
-  // Process load items with safety guards
-  let totalConnectedWatts = 0;
+  // Process load items with M&E power factor and diversity factor formulas
+  let totalInstalledWatts = 0;
+  let totalCoincidentActiveWatts = 0;
+  let totalReactiveVarSum = 0;
   let totalDailyWattHours = 0;
   let totalPeakSurgeWatts = 0;
+  let totalPeakSurgeVa = 0;
   let activeLoadCount = 0;
+
+  const categoryTotals: Record<LoadCategory, { activeKw: number; reactiveKvar: number; apparentKva: number }> = {
+    Critical: { activeKw: 0, reactiveKvar: 0, apparentKva: 0 },
+    Essential: { activeKw: 0, reactiveKvar: 0, apparentKva: 0 },
+    'Non-Essential': { activeKw: 0, reactiveKvar: 0, apparentKva: 0 },
+  };
 
   input.loadItems.forEach((item, index) => {
     const qty = Math.max(0, Math.floor(Number(item.quantity) || 0));
     const watts = Math.max(0, Number(item.watts) || 0);
     const hours = Math.max(0, Math.min(24, Number(item.hoursPerDay) || 0));
     const surge = Math.max(1.0, Math.min(10.0, Number(item.surgeFactor) || 1.0));
+    const pf = Math.max(0.4, Math.min(1.0, Number(item.powerFactor) || 0.85));
+    const df = Math.max(0.1, Math.min(1.0, Number(item.diversityFactor) || 0.80));
+    const cat: LoadCategory = ['Critical', 'Essential', 'Non-Essential'].includes(item.category as any)
+      ? (item.category as LoadCategory)
+      : 'Essential';
 
     if (qty <= 0 || watts <= 0) return;
 
     activeLoadCount++;
-    const itemWatts = qty * watts;
-    const itemDailyWh = itemWatts * hours;
-    const itemSurge = itemWatts * surge;
+    const installedW = qty * watts;
+    const coincidentActiveW = installedW * df;
+    const itemApparentVa = coincidentActiveW / pf;
+    const itemReactiveVar = Math.sqrt(Math.max(0, Math.pow(itemApparentVa, 2) - Math.pow(coincidentActiveW, 2)));
 
-    totalConnectedWatts += itemWatts;
+    const itemDailyWh = coincidentActiveW * hours;
+    const itemSurgeWatts = installedW * surge;
+    const itemSurgeVa = itemSurgeWatts / pf;
+
+    totalInstalledWatts += installedW;
+    totalCoincidentActiveWatts += coincidentActiveW;
+    totalReactiveVarSum += itemReactiveVar;
     totalDailyWattHours += itemDailyWh;
-    totalPeakSurgeWatts += itemSurge;
+    totalPeakSurgeWatts += itemSurgeWatts;
+    totalPeakSurgeVa += itemSurgeVa;
+
+    categoryTotals[cat].activeKw += coincidentActiveW / 1000;
+    categoryTotals[cat].reactiveKvar += itemReactiveVar / 1000;
 
     if (watts > 10000) {
       warnings.push({
@@ -246,23 +450,61 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
         type: 'info',
       });
     }
+
+    if (pf < 0.80) {
+      warnings.push({
+        field: `pf_${index}`,
+        message: `Low power factor (${pf}) on "${item.name}". Consider adding power factor correction capacitors to avoid utility penalties.`,
+        type: 'warning',
+      });
+    }
   });
 
-  if (activeLoadCount === 0 || totalConnectedWatts === 0) {
+  const totalCoincidentActiveKw = totalCoincidentActiveWatts / 1000;
+  const totalReactiveKvar = totalReactiveVarSum / 1000;
+  const totalApparentKva = Math.sqrt(Math.pow(totalCoincidentActiveKw, 2) + Math.pow(totalReactiveKvar, 2));
+  const systemPowerFactor = totalApparentKva > 0 ? Math.min(1.0, totalCoincidentActiveKw / totalApparentKva) : 1.0;
+
+  // Compute category breakdown with percentages
+  const categoryBreakdown: CategoryPowerBreakdown[] = (['Critical', 'Essential', 'Non-Essential'] as LoadCategory[]).map((cat) => {
+    const actKw = categoryTotals[cat].activeKw;
+    const reacKvar = categoryTotals[cat].reactiveKvar;
+    const appKva = Math.sqrt(Math.pow(actKw, 2) + Math.pow(reacKvar, 2));
+    const pct = totalCoincidentActiveKw > 0 ? Math.round((actKw / totalCoincidentActiveKw) * 100) : 0;
+    return {
+      category: cat,
+      activeKw: Math.round(actKw * 100) / 100,
+      apparentKva: Math.round(appKva * 100) / 100,
+      reactiveKvar: Math.round(reacKvar * 100) / 100,
+      percentageOfTotal: pct,
+    };
+  });
+
+  if (activeLoadCount === 0 || totalInstalledWatts === 0) {
     warnings.push({
       field: 'loadItems',
       message: 'No active electrical loads selected. Please add or enable at least one appliance to compute system requirements.',
       type: 'error',
     });
+
+    const emptyEms = runEmsSimulation(0, 0, 0, sanitizedPsh, 100 - sanitizedDod);
+
     return {
+      totalInstalledKw: 0,
       totalConnectedKw: 0,
+      totalApparentKva: 0,
+      totalReactiveKvar: 0,
+      systemPowerFactor: 1.0,
       dailyKwh: 0,
       peakSurgeKw: 0,
+      peakSurgeKva: 0,
       recommendedPvKw: 0,
       recommendedBatteryKwh: 0,
       recommendedInverterKw: 0,
       maxDcCurrentAmps: 0,
       recommendedFuseAmps: 0,
+      categoryBreakdown,
+      emsSimulation: emptyEms,
       warnings,
     };
   }
@@ -274,10 +516,10 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
   // 1. Required Daily AC Energy (kWh)
   const dailyKwh = (totalDailyWattHours / 1000) * marginFactor;
 
-  // 2. Required Inverter Continuous Power Rating (kW)
+  // 2. Required Inverter Continuous Power Rating (kW / kVA)
   const requiredInverterKw = Math.max(
-    (totalConnectedWatts / 1000) * marginFactor,
-    (totalPeakSurgeWatts / 1000 / 2) // Assume 2x surge overload rating for hybrid inverters
+    totalCoincidentActiveKw * marginFactor,
+    (totalPeakSurgeWatts / 1000 / 2) // Assume 2x surge overload rating
   ) / efficiencyFactor;
 
   // 3. Required Battery Storage Capacity (kWh)
@@ -298,15 +540,37 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
     });
   }
 
+  if (systemPowerFactor < 0.85) {
+    warnings.push({
+      field: 'systemPowerFactor',
+      message: `System Power Factor is low (${systemPowerFactor.toFixed(2)}). Apparent Power demand is ${Math.round(totalApparentKva)} kVA vs ${Math.round(totalCoincidentActiveKw)} kW active. Inverter rating must be increased.`,
+      type: 'warning',
+    });
+  }
+
+  const recPvKw = Math.ceil(requiredPvKw * 10) / 10;
+  const recBatKwh = Math.ceil(requiredBatteryKwh * 10) / 10;
+  const minSocLimit = 100 - sanitizedDod;
+
+  // Execute 3-Stage EMS Flow Simulation
+  const emsSimulation = runEmsSimulation(recPvKw, recBatKwh, dailyKwh, sanitizedPsh, minSocLimit);
+
   return {
-    totalConnectedKw: totalConnectedWatts / 1000,
-    dailyKwh,
-    peakSurgeKw: totalPeakSurgeWatts / 1000,
-    recommendedPvKw: Math.ceil(requiredPvKw * 10) / 10,
-    recommendedBatteryKwh: Math.ceil(requiredBatteryKwh * 10) / 10,
+    totalInstalledKw: Math.round((totalInstalledWatts / 1000) * 100) / 100,
+    totalConnectedKw: Math.round(totalCoincidentActiveKw * 100) / 100,
+    totalApparentKva: Math.round(totalApparentKva * 100) / 100,
+    totalReactiveKvar: Math.round(totalReactiveKvar * 100) / 100,
+    systemPowerFactor: Math.round(systemPowerFactor * 100) / 100,
+    dailyKwh: Math.round(dailyKwh * 10) / 10,
+    peakSurgeKw: Math.round((totalPeakSurgeWatts / 1000) * 10) / 10,
+    peakSurgeKva: Math.round((totalPeakSurgeVa / 1000) * 10) / 10,
+    recommendedPvKw: recPvKw,
+    recommendedBatteryKwh: recBatKwh,
     recommendedInverterKw: Math.ceil(requiredInverterKw * 10) / 10,
     maxDcCurrentAmps: Math.round(maxDcCurrentAmps),
     recommendedFuseAmps,
+    categoryBreakdown,
+    emsSimulation,
     warnings,
   };
 }
@@ -432,3 +696,4 @@ export function validateQuoteRequest(rawForm: Partial<QuoteFormData>): QuoteVali
     },
   };
 }
+

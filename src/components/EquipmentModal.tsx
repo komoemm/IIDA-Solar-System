@@ -55,6 +55,8 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const { language, t } = useLanguage();
 
+  const modalRef = React.useRef<HTMLDivElement>(null);
+
   // Combine default, preset, and existing categories into a clean unique list
   const allCategories = Array.from(
     new Set([
@@ -80,9 +82,45 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
         setImageUrl(preset.imageUrl || EQUIPMENT_IMAGES[preset.type]);
       }
 
+      const modalNode = modalRef.current;
+      if (modalNode) {
+        const focusables = modalNode.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length > 0) {
+          focusables[0].focus();
+        }
+      }
+
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           onClose();
+          return;
+        }
+
+        if (e.key === 'Tab' && modalRef.current) {
+          const focusables = Array.from<HTMLElement>(
+            modalRef.current.querySelectorAll(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((el) => !el.hasAttribute('disabled'));
+
+          if (focusables.length === 0) return;
+
+          const firstElement = focusables[0] as HTMLElement;
+          const lastElement = focusables[focusables.length - 1] as HTMLElement;
+
+          if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+              e.preventDefault();
+              lastElement.focus();
+            }
+          } else {
+            if (document.activeElement === lastElement) {
+              e.preventDefault();
+              firstElement.focus();
+            }
+          }
         }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -163,6 +201,7 @@ export const EquipmentModal: React.FC<EquipmentModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans animate-fade-in">
       <div
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-equipment-modal-title"

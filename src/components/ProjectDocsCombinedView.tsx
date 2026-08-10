@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { FileSpreadsheet, Sliders, BookOpen } from 'lucide-react';
 import { EquipmentNode, Connection, ProjectMetadata } from '../types';
-import { BimSheetView } from './BimSheetView';
 import { ProjectSettings } from './ProjectSettings';
 import { UserManual } from './UserManual';
 import { useLanguage } from '../context/LanguageContext';
+
+const BimSheetView = lazy(() =>
+  import('./BimSheetView').then((m) => ({ default: m.BimSheetView }))
+);
+
+const SubTabLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex-1 flex flex-col items-center justify-center p-12 text-[#003d9b] min-h-[350px]">
+    <div className="w-8 h-8 border-3 border-[#003d9b] border-t-transparent rounded-full animate-spin mb-3" />
+    <span className="text-xs font-bold font-mono uppercase tracking-wider">{label}</span>
+  </div>
+);
 
 export type DocsSubTab = 'bim' | 'settings' | 'manual';
 
@@ -88,12 +98,14 @@ export const ProjectDocsCombinedView: React.FC<ProjectDocsCombinedViewProps> = (
       <div className="flex-1 overflow-y-auto relative flex flex-col justify-between">
         <div className="p-2 md:p-4">
           {activeSubTab === 'bim' && (
-            <BimSheetView
-              nodes={nodes}
-              connections={connections}
-              metadata={metadata}
-              designNotes={designNotes}
-            />
+            <Suspense fallback={<SubTabLoadingFallback label="Loading BIM Drawing Sheet..." />}>
+              <BimSheetView
+                nodes={nodes}
+                connections={connections}
+                metadata={metadata}
+                designNotes={designNotes}
+              />
+            </Suspense>
           )}
 
           {activeSubTab === 'settings' && (

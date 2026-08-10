@@ -101,3 +101,18 @@ export interface EquipmentLibraryItem {
   description: string;
   iconName?: string;
 }
+
+export type LoadCategory = 'Critical' | 'Essential' | 'Non-Essential';
+
+export interface LoadItem {
+  id: string;
+  name: string;
+  category: LoadCategory;
+  quantity: number;
+  watts: number;
+  hoursPerDay: number;
+  surgeFactor: number;
+  powerFactor: number; // default 0.85
+  diversityFactor: number; // default 0.80
+}
+

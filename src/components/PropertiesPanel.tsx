@@ -83,6 +83,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close Properties"
             className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] transition-colors"
             title="Close Properties"
           >
@@ -225,6 +226,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close Panel"
             className="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
             title="Close Panel"
           >
@@ -251,6 +253,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         onSelectNodes(nodeIds.filter((id) => id !== n.id));
                       }
                     }}
+                    aria-label={`Remove ${n.id} from multi-selection`}
                     className="hover:bg-[#003d9b] hover:text-white rounded p-0.5 transition-colors"
                     title={`Remove ${n.id} from multi-selection`}
                   >
@@ -403,6 +406,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         </span>
         <button
           onClick={onClose}
+          aria-label="Close Properties"
           className="text-[#434654] hover:text-[#181c1f] p-1 rounded hover:bg-[#e0e3e7] transition-colors"
           title="Close Properties"
         >
@@ -692,6 +696,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
                     <button
                       onClick={() => onDeleteConnection(conn.id)}
+                      aria-label={`Disconnect wiring line ${conn.id}`}
                       className="text-[#ba1a1a] hover:bg-[#ffdad6] p-1 rounded transition-colors"
                       title="Disconnect wiring line"
                     >

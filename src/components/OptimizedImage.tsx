@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { EquipmentType } from '../types';
-import { EquipmentSketchVector } from './EquipmentSketchVector';
 import { Image as ImageIcon, AlertCircle } from 'lucide-react';
+
+// Dynamic import for heavy EquipmentSketchVector fallback component
+const EquipmentSketchVector = lazy(() =>
+  import('./EquipmentSketchVector').then((m) => ({ default: m.EquipmentSketchVector }))
+);
 
 interface OptimizedImageProps {
   src: string;
@@ -22,8 +26,8 @@ interface OptimizedImageProps {
  * 1. Explicit width & height to prevent Cumulative Layout Shifts (CLS)
  * 2. loading="lazy" (or "eager" for priority LCP assets)
  * 3. decoding="async" for smooth non-blocking main-thread image parsing
- * 4. Automatic WebP query formatting & srcset generator for responsive images
- * 5. Reserved container aspect-ratio with shimmer skeleton fallback
+ * 4. Automatic WebP query formatting & srcset generator with long-term browser cache parameters
+ * 5. Reserved container aspect-ratio with shimmer skeleton fallback & dynamic import vector sketch
  */
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
@@ -41,12 +45,12 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  // Convert Unsplash or generic image URLs to WebP format with responsive srcset
+  // Convert Unsplash or generic image URLs to WebP format with caching parameters & responsive srcset
   const getWebpUrl = (url: string, targetWidth: number) => {
     if (!url) return '';
     if (url.includes('images.unsplash.com')) {
       const cleanUrl = url.split('?')[0];
-      return `${cleanUrl}?fm=webp&w=${targetWidth}&q=80&auto=format&fit=crop`;
+      return `${cleanUrl}?fm=webp&w=${targetWidth}&q=80&auto=format&fit=crop&cache=31536000`;
     }
     return url;
   };
@@ -78,7 +82,9 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Fallback to Equipment Vector Sketch on error or empty URL */}
       {hasError || !src ? (
         equipmentType ? (
-          <EquipmentSketchVector type={equipmentType} />
+          <Suspense fallback={<div className="w-full h-full bg-[#0f172a]" />}>
+            <EquipmentSketchVector type={equipmentType} />
+          </Suspense>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-[#0f172a] text-[#94a3b8] p-3 text-center">
             <AlertCircle className="w-6 h-6 text-slate-500 mb-1" />
@@ -106,3 +112,4 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     </div>
   );
 };
+

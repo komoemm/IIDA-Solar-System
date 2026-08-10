@@ -95,6 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Language Switcher Button */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'ja' : 'en')}
+            aria-label={language === 'en' ? 'Switch to Japanese' : 'Switch to English'}
             className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-all shadow-2xs"
             title={language === 'en' ? 'Switch to Japanese (日本語)' : 'Switch to English'}
           >
@@ -109,6 +110,8 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onUndo}
               disabled={!canUndo}
+              aria-label={t('undo')}
+              aria-disabled={!canUndo}
               className={`p-1.5 transition-colors ${
                 canUndo
                   ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
@@ -122,6 +125,8 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onRedo}
               disabled={!canRedo}
+              aria-label={t('redo')}
+              aria-disabled={!canRedo}
               className={`p-1.5 transition-colors ${
                 canRedo
                   ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
@@ -136,6 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Auto Layout */}
           <button
             onClick={onAutoLayout}
+            aria-label={t('autoLayout')}
             className="p-1.5 text-[#434654] hover:text-[#003d9b] bg-[#f1f4f8] hover:bg-[#e0e3e7] border border-[#c3c6d6] rounded transition-colors flex items-center gap-1 text-xs font-semibold"
             title={t('autoLayout')}
           >
@@ -148,6 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onCloudSave}
               disabled={isCloudSaving}
+              aria-label={isCloudSaving ? t('savingToCloud') : t('cloudSave')}
               className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded shadow-2xs transition-colors disabled:opacity-50"
               title={t('cloudSave')}
             >
@@ -161,6 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onCloudLoad && (
             <button
               onClick={onCloudLoad}
+              aria-label={t('cloudLoad')}
               className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-colors"
               title={t('cloudLoad')}
             >
@@ -173,10 +181,13 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Navigation Tabs Bar with Small Icons */}
       <nav className="h-10 px-4 md:px-6 flex items-center bg-[#ffffff] border-b border-[#c3c6d6] text-xs font-bold uppercase tracking-wider" aria-label="Main Application Navigation">
-        <div className="flex h-full gap-1">
+        <div className="flex h-full gap-1" role="tablist">
           {/* Main Tab 1: Diagram Canvas */}
           <button
             onClick={() => setActiveTab('canvas')}
+            role="tab"
+            aria-selected={activeTab === 'canvas'}
+            aria-label={t('navCanvas')}
             className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
               activeTab === 'canvas'
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
@@ -190,6 +201,9 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Main Tab 2: Combined Equipment Inventory & Reference Gallery */}
           <button
             onClick={() => setActiveTab('inventory')}
+            role="tab"
+            aria-selected={isInventoryActive}
+            aria-label={t('navInventoryCombined')}
             className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
               isInventoryActive
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
@@ -203,6 +217,9 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Main Tab 3: Combined BIM, Settings & Manual */}
           <button
             onClick={() => setActiveTab('docs')}
+            role="tab"
+            aria-selected={isDocsActive}
+            aria-label={t('navDocsCombined')}
             className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
               isDocsActive
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   ZoomIn,
   ZoomOut,
@@ -132,12 +132,11 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   const [animateFlow, setAnimateFlow] = useState(true);
   const [isAddLegendModalOpen, setIsAddLegendModalOpen] = useState(false);
 
-  // Active Selected Node IDs helper
-  const activeSelectedIds = selectedNodeIds && selectedNodeIds.length > 0
-    ? selectedNodeIds
-    : selectedNodeId
-    ? [selectedNodeId]
-    : [];
+  // Active Selected Node IDs helper (Memoized to prevent redundant array recreations)
+  const activeSelectedIds = useMemo(
+    () => (selectedNodeIds && selectedNodeIds.length > 0 ? selectedNodeIds : selectedNodeId ? [selectedNodeId] : []),
+    [selectedNodeIds, selectedNodeId]
+  );
 
   // Marquee Selection Box State
   const [selectionBox, setSelectionBox] = useState<{
@@ -237,7 +236,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   }, []);
 
   // Helper to initiate Canvas Panning
-  const startPanning = (e: React.MouseEvent) => {
+  const startPanning = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsPanning(true);
     panStartRef.current = {
@@ -246,7 +245,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       panX: pan.x,
       panY: pan.y,
     };
-  };
+  }, [pan.x, pan.y]);
 
   // Window-level Mouse Move / Mouse Up listeners when panning, marquee selecting, or dragging nodes
   useEffect(() => {
@@ -479,8 +478,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
     }
   };
 
-  // Helper: Get Node Icon
-  const getNodeTypeIcon = (type: EquipmentType) => {
+  // Helper: Get Node Icon (Memoized with useCallback)
+  const getNodeTypeIcon = useCallback((type: EquipmentType) => {
     switch (type) {
       case 'pv_array':
         return <Sun className="w-4 h-4 text-[#003d9b]" />;
@@ -503,35 +502,98 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
       default:
         return <Box className="w-4 h-4 text-[#434654]" />;
     }
-  };
+  }, []);
 
-  // Calculate Node Port Coordinates
-  const getPortCoordinates = (node: EquipmentNode, portPosition: 'left' | 'right' | 'top' | 'bottom') => {
-    const cardWidth = viewStyle === 'card' ? 220 : 160;
-    const cardHeight = viewStyle === 'card' ? 140 : 80;
+  // Calculate Node Port Coordinates (Memoized with useCallback)
+  const getPortCoordinates = useCallback(
+    (node: EquipmentNode, portPosition: 'left' | 'right' | 'top' | 'bottom') => {
+      const cardWidth = viewStyle === 'card' ? 220 : 160;
+      const cardHeight = viewStyle === 'card' ? 140 : 80;
 
-    switch (portPosition) {
-      case 'left':
-        return { x: node.x, y: node.y + cardHeight / 2 };
-      case 'right':
-        return { x: node.x + cardWidth, y: node.y + cardHeight / 2 };
-      case 'top':
-        return { x: node.x + cardWidth / 2, y: node.y };
-      case 'bottom':
-        return { x: node.x + cardWidth / 2, y: node.y + cardHeight };
-      default:
-        return { x: node.x + cardWidth, y: node.y + cardHeight / 2 };
-    }
-  };
+      switch (portPosition) {
+        case 'left':
+          return { x: node.x, y: node.y + cardHeight / 2 };
+        case 'right':
+          return { x: node.x + cardWidth, y: node.y + cardHeight / 2 };
+        case 'top':
+          return { x: node.x + cardWidth / 2, y: node.y };
+        case 'bottom':
+          return { x: node.x + cardWidth / 2, y: node.y + cardHeight };
+        default:
+          return { x: node.x + cardWidth, y: node.y + cardHeight / 2 };
+      }
+    },
+    [viewStyle]
+  );
+
+  // Heavy connection path & bezier curve vector calculations (Memoized to avoid redundant calculations)
+  const processedConnections = useMemo(() => {
+    return connections
+      .map((conn) => {
+        const fromNode = nodes.find((n) => n.id === conn.fromNodeId);
+        const toNode = nodes.find((n) => n.id === conn.toNodeId);
+        if (!fromNode || !toNode) return null;
+
+        const fromPorts = EQUIPMENT_PORTS[fromNode.type] || [];
+        const toPorts = EQUIPMENT_PORTS[toNode.type] || [];
+
+        const fromPortDef = fromPorts.find((p) => p.id === conn.fromPort) || {
+          position: 'right' as const,
+        };
+        const toPortDef = toPorts.find((p) => p.id === conn.toPort) || {
+          position: 'left' as const,
+        };
+
+        const p1 = getPortCoordinates(fromNode, fromPortDef.position);
+        const p2 = getPortCoordinates(toNode, toPortDef.position);
+
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        const pathD = `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`;
+
+        const legendMatch = legendTypes.find(
+          (l) => l.categoryKey === conn.type || l.id === conn.type
+        );
+        const strokeColor =
+          conn.color ||
+          legendMatch?.color ||
+          (conn.type === 'dc'
+            ? '#0052cc'
+            : conn.type === 'ac'
+            ? '#334155'
+            : conn.type === 'comms'
+            ? '#ea580c'
+            : conn.type === 'ground'
+            ? '#16a34a'
+            : '#9333ea');
+
+        const lineStyle =
+          conn.style || legendMatch?.style || (conn.type === 'comms' || conn.type === 'ground' ? 'dashed' : 'solid');
+        const strokeDasharray =
+          lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : 'none';
+
+        return {
+          conn,
+          pathD,
+          midX,
+          midY,
+          strokeColor,
+          strokeDasharray,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [connections, nodes, legendTypes, getPortCoordinates]);
 
   return (
     <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#f7fafe] font-sans">
       {/* Top Floating Toolbar */}
       <div className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
         {/* Left Control Group */}
-        <div className="flex items-center gap-1 bg-[#ffffff] border border-[#c3c6d6] rounded-md p-1 shadow-md pointer-events-auto">
+        <div className="flex items-center gap-1 bg-[#ffffff] border border-[#c3c6d6] rounded-md p-1 shadow-md pointer-events-auto" role="toolbar" aria-label="Diagram Canvas Tools">
           <button
             onClick={() => setToolMode('select')}
+            aria-label="Select & Move Tool"
+            aria-pressed={toolMode === 'select'}
             className={`p-1.5 rounded transition-colors ${
               toolMode === 'select'
                 ? 'bg-[#003d9b] text-white font-semibold'
@@ -543,6 +605,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           </button>
           <button
             onClick={() => setToolMode('pan')}
+            aria-label="Pan Canvas Tool"
+            aria-pressed={toolMode === 'pan'}
             className={`p-1.5 rounded transition-colors ${
               toolMode === 'pan'
                 ? 'bg-[#003d9b] text-white font-semibold'
@@ -558,6 +622,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {/* View Mode Toggle */}
           <button
             onClick={() => setViewStyle(viewStyle === 'card' ? 'cad' : 'card')}
+            aria-label={`Toggle View Style: currently ${viewStyle === 'card' ? 'BIM Card View' : 'CAD View'}`}
             className={`px-2.5 py-1 text-xs font-bold rounded transition-colors ${
               viewStyle === 'card'
                 ? 'bg-[#e0e3e7] text-[#003d9b]'
@@ -571,6 +636,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {/* Photos Toggle */}
           <button
             onClick={() => setShowPhotos(!showPhotos)}
+            aria-label="Toggle Reference Photos"
+            aria-pressed={showPhotos}
             className={`p-1.5 rounded transition-colors ${
               showPhotos ? 'text-[#003d9b] bg-[#dae2ff]' : 'text-[#737685] hover:bg-[#f1f4f8]'
             }`}
@@ -582,6 +649,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {/* Flow Animation Toggle */}
           <button
             onClick={() => setAnimateFlow(!animateFlow)}
+            aria-label="Toggle Animated Electron Flow Particles"
+            aria-pressed={animateFlow}
             className={`p-1.5 rounded transition-colors ${
               animateFlow ? 'text-[#059669] bg-[#ecfdf5]' : 'text-[#737685] hover:bg-[#f1f4f8]'
             }`}
@@ -596,6 +665,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {onTogglePalette && (
             <button
               onClick={onTogglePalette}
+              aria-label={t('togglePalette')}
+              aria-expanded={showPalette}
               className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-semibold ${
                 showPalette
                   ? 'bg-[#003d9b] text-white'
@@ -611,6 +682,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {onToggleBottomPanel && (
             <button
               onClick={onToggleBottomPanel}
+              aria-label={t('toggleBottomPanel')}
+              aria-expanded={showBottomPanel}
               className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-semibold ${
                 showBottomPanel
                   ? 'bg-[#003d9b] text-white'
@@ -626,6 +699,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {onToggleProperties && (
             <button
               onClick={onToggleProperties}
+              aria-label={t('toggleProperties')}
+              aria-expanded={showProperties}
               className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-semibold ${
                 showProperties
                   ? 'bg-[#003d9b] text-white'
@@ -641,6 +716,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           {onToggleFocusCanvasMode && (
             <button
               onClick={onToggleFocusCanvasMode}
+              aria-label={isFocusCanvasMode ? t('showAllPanels') : t('focusCanvas')}
+              aria-pressed={isFocusCanvasMode}
               className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-bold ${
                 isFocusCanvasMode
                   ? 'bg-[#181c1f] text-white shadow-xs'
@@ -657,9 +734,10 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
         </div>
 
         {/* Right Zoom Control Group */}
-        <div className="flex items-center gap-1 bg-[#ffffff] border border-[#c3c6d6] rounded-md p-1 shadow-md pointer-events-auto">
+        <div className="flex items-center gap-1 bg-[#ffffff] border border-[#c3c6d6] rounded-md p-1 shadow-md pointer-events-auto" role="group" aria-label="Zoom Controls">
           <button
             onClick={() => setZoom((z) => Math.min(2, z + 0.15))}
+            aria-label="Zoom In"
             className="p-1.5 text-[#434654] hover:bg-[#f1f4f8] rounded transition-colors"
             title="Zoom In"
           >
@@ -670,6 +748,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           </span>
           <button
             onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))}
+            aria-label="Zoom Out"
             className="p-1.5 text-[#434654] hover:bg-[#f1f4f8] rounded transition-colors"
             title="Zoom Out"
           >
@@ -683,6 +762,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
               setZoom(1);
               setPan({ x: 0, y: 0 });
             }}
+            aria-label="Reset Zoom to 100%"
             className="p-1.5 text-[#434654] hover:bg-[#f1f4f8] rounded transition-colors"
             title="Reset Zoom 100%"
           >
@@ -767,49 +847,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
               </marker>
             </defs>
 
-            {/* Connection Lines Rendering */}
-            {connections.map((conn) => {
-              const fromNode = nodes.find((n) => n.id === conn.fromNodeId);
-              const toNode = nodes.find((n) => n.id === conn.toNodeId);
-              if (!fromNode || !toNode) return null;
-
-              const fromPorts = EQUIPMENT_PORTS[fromNode.type] || [];
-              const toPorts = EQUIPMENT_PORTS[toNode.type] || [];
-
-              const fromPortDef = fromPorts.find((p) => p.id === conn.fromPort) || {
-                position: 'right',
-              };
-              const toPortDef = toPorts.find((p) => p.id === conn.toPort) || {
-                position: 'left',
-              };
-
-              const p1 = getPortCoordinates(fromNode, fromPortDef.position);
-              const p2 = getPortCoordinates(toNode, toPortDef.position);
-
-              const midX = (p1.x + p2.x) / 2;
-              const midY = (p1.y + p2.y) / 2;
-              const pathD = `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`;
-
-              const legendMatch = legendTypes.find(
-                (l) => l.categoryKey === conn.type || l.id === conn.type
-              );
-              const strokeColor =
-                conn.color ||
-                legendMatch?.color ||
-                (conn.type === 'dc'
-                  ? '#0052cc'
-                  : conn.type === 'ac'
-                  ? '#334155'
-                  : conn.type === 'comms'
-                  ? '#ea580c'
-                  : conn.type === 'ground'
-                  ? '#16a34a'
-                  : '#9333ea');
-
-              const lineStyle = conn.style || legendMatch?.style || (conn.type === 'comms' || conn.type === 'ground' ? 'dashed' : 'solid');
-              const strokeDasharray =
-                lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : 'none';
-
+            {/* Connection Lines Rendering (Driven by memoized processedConnections) */}
+            {processedConnections.map(({ conn, pathD, midX, midY, strokeColor, strokeDasharray }) => {
               const isSelected = selectedConnectionId === conn.id;
 
               return (
@@ -1207,6 +1246,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                 if (onDeleteNodes) onDeleteNodes(activeSelectedIds);
                 else activeSelectedIds.forEach((id) => onDeleteNode(id));
               }}
+              aria-label={`Delete ${activeSelectedIds.length} selected components`}
               className="px-2.5 py-1.5 bg-[#ffdad6] hover:bg-[#ba1a1a] text-[#ba1a1a] hover:text-white rounded font-bold flex items-center gap-1 transition-all"
               title="Delete all selected components (Delete key)"
             >
@@ -1218,6 +1258,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                 if (onSelectNodes) onSelectNodes([]);
                 else onSelectNode(null);
               }}
+              aria-label="Clear selection"
               className="p-1 hover:bg-[#f1f4f8] rounded text-[#737685] hover:text-[#181c1f]"
               title="Clear selection (Escape key)"
             >
@@ -1241,6 +1282,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
               </div>
               <button
                 onClick={() => setIsAddLegendModalOpen(true)}
+                aria-label="Add custom line type to legend"
                 className="px-2 py-0.5 bg-[#dae2ff] text-[#003d9b] hover:bg-[#b9cde5] rounded text-[10px] font-bold flex items-center gap-1 transition-colors"
                 title="Add custom line type to project legend"
               >
@@ -1302,6 +1344,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                             e.stopPropagation();
                             onDeleteCustomLegendType(item.id);
                           }}
+                          aria-label={`Remove custom legend line ${item.label}`}
                           className="text-[#737685] hover:text-[#ba1a1a] p-0.5 rounded"
                           title="Remove custom legend line"
                         >
@@ -1336,6 +1379,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                         '\n\n[EQUIPMENT SIZING & VOC CALCULATION]:\n1. String Sizing: 14 Modules per String @ Temp Coeff -0.28%/°C. Max Voc = 612.4 VDC @ -10°C ambient.'
                     )
                   }
+                  aria-label="Insert PV Sizing Note"
                   className="px-2 py-0.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] rounded text-[10px] font-bold transition-colors"
                 >
                   + PV Sizing Note
@@ -1348,6 +1392,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                         '\n\n[OVERCURRENT PROTECTION & OCPD]:\n2. DC Overcurrent Protection: 15A gPV fuses in combiner box. AC OCPD: 100A 2-Pole Breaker.'
                     )
                   }
+                  aria-label="Insert OCPD Note"
                   className="px-2 py-0.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] rounded text-[10px] font-bold transition-colors"
                 >
                   + OCPD Note
@@ -1360,6 +1405,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                         '\n\n[SAFETY & RAPID SHUTDOWN]:\n3. Rapid Shutdown compliance verified according to NEC 690.12 with Sol-Ark integrated RSD transmitter.'
                     )
                   }
+                  aria-label="Insert RSD Compliance Note"
                   className="px-2 py-0.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] rounded text-[10px] font-bold transition-colors"
                 >
                   + RSD Compliance
@@ -1377,6 +1423,8 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
             {onToggleBottomPanel && (
               <button
                 onClick={onToggleBottomPanel}
+                aria-label="Hide Legend and Notes Panel"
+                aria-expanded={true}
                 className="absolute top-2.5 right-2.5 text-[#737685] hover:text-[#181c1f] hover:bg-[#e0e3e7] p-1 rounded transition-colors"
                 title="Hide Legend & Notes Panel"
               >

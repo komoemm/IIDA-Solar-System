@@ -27,12 +27,49 @@ export const AddLegendModal: React.FC<AddLegendModalProps> = ({
   const [label, setLabel] = useState('');
   const [color, setColor] = useState('#9333ea');
   const [style, setStyle] = useState<'solid' | 'dashed' | 'dotted'>('solid');
+  const modalRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (isOpen) {
+      const modalNode = modalRef.current;
+      if (modalNode) {
+        const focusables = modalNode.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length > 0) {
+          focusables[0].focus();
+        }
+      }
+
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           onClose();
+          return;
+        }
+
+        if (e.key === 'Tab' && modalRef.current) {
+          const focusables = Array.from<HTMLElement>(
+            modalRef.current.querySelectorAll(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((el) => !el.hasAttribute('disabled'));
+
+          if (focusables.length === 0) return;
+
+          const firstElement = focusables[0] as HTMLElement;
+          const lastElement = focusables[focusables.length - 1] as HTMLElement;
+
+          if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+              e.preventDefault();
+              lastElement.focus();
+            }
+          } else {
+            if (document.activeElement === lastElement) {
+              e.preventDefault();
+              firstElement.focus();
+            }
+          }
         }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -65,6 +102,7 @@ export const AddLegendModal: React.FC<AddLegendModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-legend-modal-title"

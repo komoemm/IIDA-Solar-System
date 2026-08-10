@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { useDiagramState } from './hooks/useDiagramState';
@@ -6,13 +6,28 @@ import { Header, MainTabType } from './components/Header';
 import { EquipmentPalette } from './components/EquipmentPalette';
 import { DiagramCanvas } from './components/DiagramCanvas';
 import { PropertiesPanel } from './components/PropertiesPanel';
-import { ProjectDocsCombinedView, DocsSubTab } from './components/ProjectDocsCombinedView';
-import { EquipmentCombinedView, InventorySubTab } from './components/EquipmentCombinedView';
+import type { DocsSubTab } from './components/ProjectDocsCombinedView';
+import type { InventorySubTab } from './components/EquipmentCombinedView';
 import { EquipmentModal } from './components/EquipmentModal';
 import { Cloud, CheckCircle2, X, Clock, Sun, Database, GitCommit, Calendar, MessageSquare, Tag, Save, ArrowRight } from 'lucide-react';
 import { exportElementToPng, exportDiagramToSvg, exportDiagramToJson } from './utils/exportUtils';
 import { EquipmentType, EquipmentLibraryItem } from './types';
 import { LIBRARY_ITEMS } from './data/presetData';
+
+// Code-splitting via React.lazy & Suspense for heavy tab components
+const ProjectDocsCombinedView = lazy(() =>
+  import('./components/ProjectDocsCombinedView').then((m) => ({ default: m.ProjectDocsCombinedView }))
+);
+const EquipmentCombinedView = lazy(() =>
+  import('./components/EquipmentCombinedView').then((m) => ({ default: m.EquipmentCombinedView }))
+);
+
+const ViewLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex-1 flex flex-col items-center justify-center p-12 text-[#003d9b] min-h-[400px]">
+    <div className="w-8 h-8 border-3 border-[#003d9b] border-t-transparent rounded-full animate-spin mb-3" />
+    <span className="text-xs font-bold font-mono uppercase tracking-wider">{label}</span>
+  </div>
+);
 
 export default function App() {
   const [activeTab, setActiveTabState] = useState<MainTabType>('canvas');
@@ -474,41 +489,45 @@ export default function App() {
 
         {/* TAB 2: Combined Equipment Inventory & Reference Gallery */}
         {(activeTab === 'inventory' || activeTab === 'gallery') && (
-          <EquipmentCombinedView
-            nodes={nodes}
-            onUpdateNode={updateNode}
-            onNavigateToCanvas={(id) => {
-              setSelectedNodeId(id);
-              setActiveTab('canvas');
-              setShowProperties(true);
-            }}
-            onDeleteNode={deleteNode}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onAddEquipment={(type) => {
-              addNode(type);
-              setActiveTab('canvas');
-            }}
-            onAddEquipmentFromCatalog={handleAddEquipmentFromCatalog}
-            catalogItems={catalogItems}
-            onSaveCatalogItem={handleSaveCatalogItem}
-            activeSubTab={activeInventorySubTab}
-            setActiveSubTab={setActiveInventorySubTab}
-          />
+          <Suspense fallback={<ViewLoadingFallback label="Loading Equipment & Inventory View..." />}>
+            <EquipmentCombinedView
+              nodes={nodes}
+              onUpdateNode={updateNode}
+              onNavigateToCanvas={(id) => {
+                setSelectedNodeId(id);
+                setActiveTab('canvas');
+                setShowProperties(true);
+              }}
+              onDeleteNode={deleteNode}
+              onOpenAddModal={() => setIsAddModalOpen(true)}
+              onAddEquipment={(type) => {
+                addNode(type);
+                setActiveTab('canvas');
+              }}
+              onAddEquipmentFromCatalog={handleAddEquipmentFromCatalog}
+              catalogItems={catalogItems}
+              onSaveCatalogItem={handleSaveCatalogItem}
+              activeSubTab={activeInventorySubTab}
+              setActiveSubTab={setActiveInventorySubTab}
+            />
+          </Suspense>
         )}
 
         {/* TAB 4: Combined BIM Drawing Sheet, Project Settings & User Manual */}
         {(activeTab === 'docs' || activeTab === 'bim' || activeTab === 'settings' || activeTab === 'manual') && (
-          <ProjectDocsCombinedView
-            nodes={nodes}
-            connections={connections}
-            metadata={metadata}
-            designNotes={designNotes}
-            onUpdateMetadata={updateMetadata}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            activeSubTab={activeDocsSubTab}
-            setActiveSubTab={setActiveDocsSubTab}
-            onNavigateTab={(tab) => setActiveTab(tab as MainTabType)}
-          />
+          <Suspense fallback={<ViewLoadingFallback label="Loading Documentation View..." />}>
+            <ProjectDocsCombinedView
+              nodes={nodes}
+              connections={connections}
+              metadata={metadata}
+              designNotes={designNotes}
+              onUpdateMetadata={updateMetadata}
+              onOpenAddModal={() => setIsAddModalOpen(true)}
+              activeSubTab={activeDocsSubTab}
+              setActiveSubTab={setActiveDocsSubTab}
+              onNavigateTab={(tab) => setActiveTab(tab as MainTabType)}
+            />
+          </Suspense>
         )}
       </main>
 
