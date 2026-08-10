@@ -10,7 +10,7 @@ import { EquipmentModal } from './components/EquipmentModal';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { CheckCircle2, X, GitCommit, Calendar, MessageSquare, Tag, Save, Database, Clock, ArrowRight } from 'lucide-react';
 import { exportElementToPng, exportDiagramToSvg, exportDiagramToJson } from './utils/exportUtils';
-import { EquipmentType, EquipmentLibraryItem } from './types';
+import { EquipmentType, EquipmentLibraryItem, EquipmentNode } from './types';
 import { LIBRARY_ITEMS, OFFICIAL_FACTORY_SLD_PRESET } from './data/presetData';
 
 // Code-splitting via React.lazy & Suspense for heavy tab components
@@ -27,6 +27,48 @@ const ViewLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
     <span className="text-xs font-bold font-mono uppercase tracking-wider">{label}</span>
   </div>
 );
+
+function extractCanvasSpecs(nodes: EquipmentNode[]) {
+  let pvCapacityKw = 0;
+  let batteryCapacityKwh = 0;
+  let inverterCapacityKw = 0;
+
+  nodes.forEach((node) => {
+    const text = `${node.capacity || ''} ${node.name || ''} ${node.notes || ''}`;
+
+    if (node.type === 'pv_array') {
+      const matches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*kW/gi)];
+      if (matches.length > 0) {
+        const nums = matches.map((m) => parseFloat(m[1])).filter((n) => !isNaN(n));
+        if (nums.length > 0) {
+          pvCapacityKw += Math.max(...nums);
+        }
+      }
+    } else if (node.type === 'battery') {
+      const matches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*kWh/gi)];
+      if (matches.length > 0) {
+        const nums = matches.map((m) => parseFloat(m[1])).filter((n) => !isNaN(n));
+        if (nums.length > 0) {
+          batteryCapacityKwh += Math.max(...nums);
+        }
+      }
+    } else if (node.type === 'inverter') {
+      const matches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*kW/gi)];
+      if (matches.length > 0) {
+        const nums = matches.map((m) => parseFloat(m[1])).filter((n) => !isNaN(n) && n <= 1000);
+        if (nums.length > 0) {
+          inverterCapacityKw += Math.max(...nums);
+        }
+      }
+    }
+  });
+
+  return {
+    pvCapacityKw: pvCapacityKw > 0 ? Math.round(pvCapacityKw * 10) / 10 : 124.8,
+    batteryCapacityKwh: batteryCapacityKwh > 0 ? Math.round(batteryCapacityKwh * 10) / 10 : 286.7,
+    inverterCapacityKw: inverterCapacityKw > 0 ? Math.round(inverterCapacityKw * 10) / 10 : 100,
+  };
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<MainTabType>('canvas');
@@ -470,13 +512,21 @@ export default function App() {
         )}
 
         {/* TAB 2: Solar Load Calculator (Near Line Diagram SLD Canvas) */}
-        {activeTab === 'calculator' && (
-          <div className="w-full h-full overflow-y-auto p-2 md:p-6">
-            <Suspense fallback={<ViewLoadingFallback label="Loading Solar Load Calculator..." />}>
-              <SolarLoadCalculator />
-            </Suspense>
-          </div>
-        )}
+        {activeTab === 'calculator' && (() => {
+          const canvasSpecs = extractCanvasSpecs(nodes);
+          return (
+            <div className="w-full h-full overflow-y-auto p-2 md:p-6">
+              <Suspense fallback={<ViewLoadingFallback label="Loading Solar Load Calculator..." />}>
+                <SolarLoadCalculator
+                  canvasPvCapacityKw={canvasSpecs.pvCapacityKw}
+                  canvasBatteryCapacityKwh={canvasSpecs.batteryCapacityKwh}
+                  canvasInverterCapacityKw={canvasSpecs.inverterCapacityKw}
+                  onResetOfficialSld={handleLoadOfficialFactorySld}
+                />
+              </Suspense>
+            </div>
+          );
+        })()}
 
         {/* TAB 3: Equipment & Image Gallery */}
         {activeTab === 'gallery' && (

@@ -56,6 +56,10 @@ import {
 } from 'recharts';
 
 interface SolarLoadCalculatorProps {
+  canvasPvCapacityKw?: number;
+  canvasBatteryCapacityKwh?: number;
+  canvasInverterCapacityKw?: number;
+  onResetOfficialSld?: () => void;
   onApplySizingToDiagram?: (sizing: {
     recommendedPvKw: number;
     recommendedBatteryKwh: number;
@@ -67,72 +71,50 @@ interface SolarLoadCalculatorProps {
 const DEFAULT_LOAD_ITEMS: LoadItem[] = [
   {
     id: '1',
-    name: 'Factory Main HVAC Industrial Chiller',
-    category: 'Non-Essential',
-    priorityLevel: 'Priority 3 (Heavy Non-Essential)',
-    quantity: 2,
-    watts: 25000,
+    name: 'Production Lines & Assembly',
+    category: 'Essential',
+    priorityLevel: 'Priority 2 (Standard Production)',
+    quantity: 1,
+    watts: 30600,
     hoursPerDay: 9,
-    surgeFactor: 2.5,
+    surgeFactor: 2.0,
     powerFactor: 0.85,
-    diversityFactor: 0.80,
+    diversityFactor: 1.0,
     operationalSchedule: 'Day Shift (08:00 - 17:00)',
   },
   {
     id: '2',
-    name: 'Assembly Line CNC Motors & Drives',
-    category: 'Essential',
-    priorityLevel: 'Priority 2 (Standard Production)',
-    quantity: 3,
-    watts: 12000,
+    name: 'Factory High-Bay Lighting & Air Handling',
+    category: 'Non-Essential',
+    priorityLevel: 'Priority 3 (Heavy Non-Essential)',
+    quantity: 1,
+    watts: 51250,
     hoursPerDay: 9,
-    surgeFactor: 3.0,
-    powerFactor: 0.82,
-    diversityFactor: 0.85,
+    surgeFactor: 1.5,
+    powerFactor: 0.88,
+    diversityFactor: 1.0,
     operationalSchedule: 'Day Shift (08:00 - 17:00)',
   },
   {
     id: '3',
-    name: 'Critical Data Server & Automation PLCs',
+    name: 'Critical IT Server Room & Controls',
     category: 'Critical',
     priorityLevel: 'Priority 1 (Critical)',
     quantity: 1,
-    watts: 8500,
+    watts: 18220,
     hoursPerDay: 24,
     surgeFactor: 1.2,
     powerFactor: 0.95,
     diversityFactor: 1.0,
     operationalSchedule: '24/7 Continuous',
   },
-  {
-    id: '4',
-    name: 'High-Bay Factory LED Bay Lights',
-    category: 'Critical',
-    priorityLevel: 'Priority 1 (Critical)',
-    quantity: 60,
-    watts: 180,
-    hoursPerDay: 24,
-    surgeFactor: 1.1,
-    powerFactor: 0.92,
-    diversityFactor: 0.90,
-    operationalSchedule: '24/7 Continuous',
-  },
-  {
-    id: '5',
-    name: 'Night Shift Packaging Machine & Conveyor',
-    category: 'Non-Essential',
-    priorityLevel: 'Priority 3 (Heavy Non-Essential)',
-    quantity: 2,
-    watts: 7500,
-    hoursPerDay: 8,
-    surgeFactor: 2.0,
-    powerFactor: 0.80,
-    diversityFactor: 0.75,
-    operationalSchedule: 'Night Shift (17:00 - 01:00)',
-  },
 ];
 
 export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
+  canvasPvCapacityKw = 124.8,
+  canvasBatteryCapacityKwh = 286.7,
+  canvasInverterCapacityKw = 100,
+  onResetOfficialSld,
   onApplySizingToDiagram,
   onClose,
 }) => {
@@ -155,13 +137,13 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
   // Load Shedding Advisor Interactive States
   const [sheddingThresholdSoc, setSheddingThresholdSoc] = useState<number>(30); // Default 30% SoC threshold
   const [testBatterySoc, setTestBatterySoc] = useState<number>(25); // Simulated test SoC (e.g. 25%)
-  const [manualSheddedIds, setManualSheddedIds] = useState<string[]>(['1', '5']); // Default shed heavy loads
+  const [manualSheddedIds, setManualSheddedIds] = useState<string[]>(['2']); // Default shed heavy loads
 
   // Grid Electricity Tariff & MMK Exchange Rate States
   const [gridTariffUsd, setGridTariffUsd] = useState<number>(0.14); // $0.14 / kWh commercial rate
   const [mmkExchangeRate, setMmkExchangeRate] = useState<number>(3500); // 3,500 MMK / USD
 
-  // Perform full calculation memoized
+  // Perform full calculation memoized with active canvas specs
   const calculatedResults: SolarSizingResult = useMemo(() => {
     return calculateSolarSizing({
       loadItems,
@@ -171,6 +153,9 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
       autonomyDays,
       systemVoltage,
       safetyMargin,
+      installedPvKw: canvasPvCapacityKw,
+      installedBatteryKwh: canvasBatteryCapacityKwh,
+      installedInverterKw: canvasInverterCapacityKw,
     });
   }, [
     loadItems,
@@ -180,6 +165,9 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
     autonomyDays,
     systemVoltage,
     safetyMargin,
+    canvasPvCapacityKw,
+    canvasBatteryCapacityKwh,
+    canvasInverterCapacityKw,
   ]);
 
   // Usable Battery Capacity calculation: Total kWh * DoD (default 80%)
@@ -407,7 +395,11 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
     setSafetyMargin(REGIONAL_SOLAR_CONSTANTS.DEFAULT_SAFETY_MARGIN);
     setSheddingThresholdSoc(30);
     setTestBatterySoc(25);
-    setManualSheddedIds(['1', '5']);
+    setManualSheddedIds(['2']);
+
+    if (onResetOfficialSld) {
+      onResetOfficialSld();
+    }
   };
 
   const toggleShedItem = (id: string) => {
@@ -523,13 +515,20 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
               <h2 className="text-lg font-bold text-[#181c1f]">
                 Factory Solar Plant Specs &amp; M&amp;E Load Calculator
               </h2>
-              <span className="bg-[#e0e7ff] text-[#003d9b] text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-[#c7d2fe]">
-                <Factory className="w-3 h-3" />
-                Solis Hybrid System (124.8 kWp PV Capacity)
-              </span>
+              <div className="flex items-center gap-2 bg-[#e0e7ff] text-[#003d9b] text-xs font-bold px-3 py-1 rounded-full border border-[#a5b4fc] shadow-2xs">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>⚡ Live Synced with Active SLD Canvas</span>
+              </div>
             </div>
-            <p className="text-xs text-[#434654] mt-0.5">
-              Optimized for 08:00 - 17:00 Day Shift Factory Load self-consumption ratio and Solis S6 110kW Industrial Hybrid Inverter specs.
+            <p className="text-xs text-[#434654] mt-1 flex items-center gap-3 flex-wrap font-medium">
+              <span>Solar Array: <strong className="text-[#003d9b]">{canvasPvCapacityKw} kWp</strong></span>
+              <span>•</span>
+              <span>BESS Storage: <strong className="text-[#003d9b]">{canvasBatteryCapacityKwh} kWh</strong></span>
+              <span>•</span>
+              <span>Inverter AC: <strong className="text-[#003d9b]">{canvasInverterCapacityKw} kW</strong></span>
             </p>
           </div>
         </div>
@@ -537,10 +536,11 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleResetDefaults}
-            className="px-3 py-1.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#434654] text-xs font-semibold rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#003d9b] text-xs font-bold rounded flex items-center gap-1.5 transition-colors cursor-pointer border border-[#c3c6d6]"
+            title="Reset both Diagram Canvas and Load Calculator to Official Factory Specs"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Factory Specs</span>
+            <span>Reset to Official SLD</span>
           </button>
         </div>
       </header>

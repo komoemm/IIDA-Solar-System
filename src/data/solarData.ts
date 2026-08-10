@@ -152,6 +152,9 @@ export interface SolarSizingInput {
   autonomyDays: number;
   systemVoltage: number;
   safetyMargin: number;
+  installedPvKw?: number;
+  installedBatteryKwh?: number;
+  installedInverterKw?: number;
 }
 
 export interface CalculationWarning {
@@ -624,8 +627,11 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
   const recBatKwh = Math.ceil(requiredBatteryKwh * 10) / 10;
   const minSocLimit = 100 - sanitizedDod;
 
+  const simPvKw = input.installedPvKw && input.installedPvKw > 0 ? input.installedPvKw : recPvKw;
+  const simBatKwh = input.installedBatteryKwh && input.installedBatteryKwh > 0 ? input.installedBatteryKwh : recBatKwh;
+
   // Execute 3-Stage EMS Flow Simulation with operational schedule itemized loads
-  const emsSimulation = runEmsSimulation(recPvKw, recBatKwh, dailyKwh, sanitizedPsh, minSocLimit, input.loadItems);
+  const emsSimulation = runEmsSimulation(simPvKw, simBatKwh, dailyKwh, sanitizedPsh, minSocLimit, input.loadItems);
 
   return {
     totalInstalledKw: Math.round((totalInstalledWatts / 1000) * 100) / 100,
