@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  Printer,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -664,17 +663,6 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
             {animateFlow ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
           </button>
 
-          <div className="w-[1px] h-5 bg-[#c3c6d6] my-auto mx-1" />
-
-          {/* Embedded BIM Print / Export Control */}
-          <button
-            onClick={onPrintSheet || (() => window.print())}
-            className="px-2.5 py-1 text-xs font-bold text-[#003d9b] bg-[#dae2ff]/60 hover:bg-[#dae2ff] rounded flex items-center gap-1 transition-colors"
-            title="Print or Export Drawing Sheet"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Print Sheet</span>
-          </button>
 
           <div className="w-[1px] h-5 bg-[#c3c6d6] my-auto mx-1" />
 

@@ -7,10 +7,11 @@ import { EquipmentPalette } from './components/EquipmentPalette';
 import { DiagramCanvas } from './components/DiagramCanvas';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { EquipmentModal } from './components/EquipmentModal';
+import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { CheckCircle2, X, GitCommit, Calendar, MessageSquare, Tag, Save, Database, Clock, ArrowRight } from 'lucide-react';
 import { exportElementToPng, exportDiagramToSvg, exportDiagramToJson } from './utils/exportUtils';
 import { EquipmentType, EquipmentLibraryItem } from './types';
-import { LIBRARY_ITEMS } from './data/presetData';
+import { LIBRARY_ITEMS, OFFICIAL_FACTORY_SLD_PRESET } from './data/presetData';
 
 // Code-splitting via React.lazy & Suspense for heavy tab components
 const ReferenceGallery = lazy(() =>
@@ -30,6 +31,7 @@ const ViewLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
 export default function App() {
   const [activeTab, setActiveTab] = useState<MainTabType>('canvas');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [catalogItems, setCatalogItems] = useState<EquipmentLibraryItem[]>(LIBRARY_ITEMS);
 
   const {
@@ -180,7 +182,7 @@ export default function App() {
 
   // Export handlers
   const handlePrintSheet = () => {
-    window.print();
+    setIsPrintPreviewOpen(true);
   };
 
   const handleExportPng = () => {
@@ -326,6 +328,13 @@ export default function App() {
     setActiveTab('canvas');
   };
 
+  const handleLoadOfficialFactorySld = () => {
+    loadState(OFFICIAL_FACTORY_SLD_PRESET);
+    setActiveTab('canvas');
+    setCloudNotice('Loaded 124.8 kWp Official Factory Single Line Diagram (SLD) Preset!');
+    setTimeout(() => setCloudNotice(null), 4000);
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#f7fafe] font-sans antialiased text-[#181c1f] select-none">
       {/* Navigation Header */}
@@ -334,6 +343,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         metadata={metadata}
         onPrintExport={handlePrintSheet}
+        onLoadOfficialFactorySld={handleLoadOfficialFactorySld}
       />
 
       {/* Cloud Notification Banner */}
@@ -458,29 +468,33 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: Equipment & Image Gallery */}
-        {activeTab === 'gallery' && (
-          <Suspense fallback={<ViewLoadingFallback label="Loading Equipment & Image Gallery..." />}>
-            <ReferenceGallery
-              onAddEquipment={(type) => {
-                addNode(type);
-                setActiveTab('canvas');
-              }}
-              onAddEquipmentFromCatalog={(item) => {
-                handleAddEquipmentFromCatalog(item);
-                setActiveTab('canvas');
-              }}
-              catalogItems={catalogItems}
-              onSaveCatalogItem={handleSaveCatalogItem}
-            />
-          </Suspense>
+        {/* TAB 2: Solar Load Calculator (Near Line Diagram SLD Canvas) */}
+        {activeTab === 'calculator' && (
+          <div className="w-full h-full overflow-y-auto p-2 md:p-6">
+            <Suspense fallback={<ViewLoadingFallback label="Loading Solar Load Calculator..." />}>
+              <SolarLoadCalculator />
+            </Suspense>
+          </div>
         )}
 
-        {/* TAB 3: Solar Load Calculator */}
-        {activeTab === 'calculator' && (
-          <Suspense fallback={<ViewLoadingFallback label="Loading Solar Load Calculator..." />}>
-            <SolarLoadCalculator />
-          </Suspense>
+        {/* TAB 3: Equipment & Image Gallery */}
+        {activeTab === 'gallery' && (
+          <div className="w-full h-full overflow-y-auto p-2 md:p-6">
+            <Suspense fallback={<ViewLoadingFallback label="Loading Equipment & Image Gallery..." />}>
+              <ReferenceGallery
+                onAddEquipment={(type) => {
+                  addNode(type);
+                  setActiveTab('canvas');
+                }}
+                onAddEquipmentFromCatalog={(item) => {
+                  handleAddEquipmentFromCatalog(item);
+                  setActiveTab('canvas');
+                }}
+                catalogItems={catalogItems}
+                onSaveCatalogItem={handleSaveCatalogItem}
+              />
+            </Suspense>
+          </div>
         )}
       </main>
 
@@ -696,6 +710,16 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Interactive HTML Print Preview Modal */}
+      <PrintPreviewModal
+        isOpen={isPrintPreviewOpen}
+        onClose={() => setIsPrintPreviewOpen(false)}
+        nodes={nodes}
+        connections={connections}
+        metadata={metadata}
+        designNotes={designNotes}
+      />
     </div>
   );
 }
