@@ -42,7 +42,7 @@ import {
 import { EQUIPMENT_PORTS, DEFAULT_LEGEND_TYPES } from '../data/presetData';
 import { useLanguage } from '../context/LanguageContext';
 import { AddLegendModal } from './AddLegendModal';
-import { OptimizedImage } from './OptimizedImage';
+import { EquipmentSketchVector } from './EquipmentSketchVector';
 
 interface DiagramCanvasProps {
   nodes: EquipmentNode[];
@@ -654,19 +654,6 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
             </button>
           )}
 
-          {/* Photos Toggle */}
-          <button
-            onClick={() => setShowPhotos(!showPhotos)}
-            aria-label="Toggle Reference Photos"
-            aria-pressed={showPhotos}
-            className={`p-1.5 rounded transition-colors ${
-              showPhotos ? 'text-[#003d9b] bg-[#dae2ff]' : 'text-[#737685] hover:bg-[#f1f4f8]'
-            }`}
-            title="Show/Hide Real-World Reference Photo Thumbnails"
-          >
-            <ImageIcon className="w-4 h-4" />
-          </button>
-
           {/* Flow Animation Toggle */}
           <button
             onClick={() => setAnimateFlow(!animateFlow)}
@@ -1144,20 +1131,15 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
                       </span>
                     </div>
 
-                    {/* Content Row with Image & Details */}
+                    {/* Content Row with CAD Vector Sketch & Details */}
                     <div className="flex gap-2 items-center mt-2 flex-1">
-                      {showPhotos && node.imageUrl && (
-                        <div className="w-12 h-12 rounded bg-[#f1f4f8] border border-[#c3c6d6] overflow-hidden shrink-0">
-                          <OptimizedImage
-                            src={node.imageUrl}
-                            alt={node.name}
-                            width={100}
-                            height={100}
-                            equipmentType={node.type}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
+                      <div className="w-12 h-12 rounded bg-[#0f172a] border border-[#1e293b] overflow-hidden shrink-0 flex items-center justify-center p-0.5 shadow-xs">
+                        <EquipmentSketchVector
+                          type={node.type}
+                          showDetails={false}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-xs text-[#181c1f] truncate leading-snug">
