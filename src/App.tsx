@@ -6,20 +6,18 @@ import { Header, MainTabType } from './components/Header';
 import { EquipmentPalette } from './components/EquipmentPalette';
 import { DiagramCanvas } from './components/DiagramCanvas';
 import { PropertiesPanel } from './components/PropertiesPanel';
-import type { DocsSubTab } from './components/ProjectDocsCombinedView';
-import type { InventorySubTab } from './components/EquipmentCombinedView';
 import { EquipmentModal } from './components/EquipmentModal';
-import { Cloud, CheckCircle2, X, Clock, Sun, Database, GitCommit, Calendar, MessageSquare, Tag, Save, ArrowRight } from 'lucide-react';
+import { CheckCircle2, X, GitCommit, Calendar, MessageSquare, Tag, Save, Database, Clock, ArrowRight } from 'lucide-react';
 import { exportElementToPng, exportDiagramToSvg, exportDiagramToJson } from './utils/exportUtils';
 import { EquipmentType, EquipmentLibraryItem } from './types';
 import { LIBRARY_ITEMS } from './data/presetData';
 
 // Code-splitting via React.lazy & Suspense for heavy tab components
-const ProjectDocsCombinedView = lazy(() =>
-  import('./components/ProjectDocsCombinedView').then((m) => ({ default: m.ProjectDocsCombinedView }))
+const ReferenceGallery = lazy(() =>
+  import('./components/ReferenceGallery').then((m) => ({ default: m.ReferenceGallery }))
 );
-const EquipmentCombinedView = lazy(() =>
-  import('./components/EquipmentCombinedView').then((m) => ({ default: m.EquipmentCombinedView }))
+const SolarLoadCalculator = lazy(() =>
+  import('./components/SolarLoadCalculator').then((m) => ({ default: m.SolarLoadCalculator }))
 );
 
 const ViewLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
@@ -30,26 +28,7 @@ const ViewLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
 );
 
 export default function App() {
-  const [activeTab, setActiveTabState] = useState<MainTabType>('canvas');
-  const [activeDocsSubTab, setActiveDocsSubTab] = useState<DocsSubTab>('bim');
-  const [activeInventorySubTab, setActiveInventorySubTab] = useState<InventorySubTab>('inventory');
-
-  const setActiveTab = (tab: MainTabType) => {
-    if (tab === 'bim' || tab === 'settings' || tab === 'manual') {
-      setActiveTabState('docs');
-      setActiveDocsSubTab(tab as DocsSubTab);
-    } else if (tab === 'docs') {
-      setActiveTabState('docs');
-    } else if (tab === 'inventory' || tab === 'gallery') {
-      setActiveTabState('inventory');
-      if (tab === 'gallery') {
-        setActiveInventorySubTab('gallery');
-      }
-    } else {
-      setActiveTabState(tab);
-    }
-  };
-
+  const [activeTab, setActiveTab] = useState<MainTabType>('canvas');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [catalogItems, setCatalogItems] = useState<EquipmentLibraryItem[]>(LIBRARY_ITEMS);
 
@@ -200,6 +179,10 @@ export default function App() {
   };
 
   // Export handlers
+  const handlePrintSheet = () => {
+    window.print();
+  };
+
   const handleExportPng = () => {
     exportElementToPng(
       'diagram-canvas-container',
@@ -350,20 +333,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         metadata={metadata}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={undo}
-        onRedo={redo}
-        onAutoLayout={autoLayout}
-        onOpenAddModal={() => setIsAddModalOpen(true)}
-        onExportPng={handleExportPng}
-        onExportSvg={handleExportSvg}
-        onExportJson={handleExportJson}
-        onImportJson={handleImportJson}
-        onResetSample={resetToDefault}
-        onCloudSave={handleOpenCloudSaveModal}
-        onCloudLoad={handleCloudLoadModalOpen}
-        isCloudSaving={isCloudSaving}
+        onPrintExport={handlePrintSheet}
       />
 
       {/* Cloud Notification Banner */}
@@ -448,6 +418,9 @@ export default function App() {
               }}
               designNotes={designNotes}
               onChangeDesignNotes={updateDesignNotes}
+              onExportPng={handleExportPng}
+              onExportSvg={handleExportSvg}
+              onPrintSheet={handlePrintSheet}
               showPalette={showPalette}
               onTogglePalette={() => setShowPalette(!showPalette)}
               showProperties={showProperties}
@@ -487,46 +460,28 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: Combined Equipment Inventory & Reference Gallery */}
-        {(activeTab === 'inventory' || activeTab === 'gallery') && (
-          <Suspense fallback={<ViewLoadingFallback label="Loading Equipment & Inventory View..." />}>
-            <EquipmentCombinedView
-              nodes={nodes}
-              onUpdateNode={updateNode}
-              onNavigateToCanvas={(id) => {
-                setSelectedNodeId(id);
-                setActiveTab('canvas');
-                setShowProperties(true);
-              }}
-              onDeleteNode={deleteNode}
-              onOpenAddModal={() => setIsAddModalOpen(true)}
+        {/* TAB 2: Equipment & Image Gallery */}
+        {activeTab === 'gallery' && (
+          <Suspense fallback={<ViewLoadingFallback label="Loading Equipment & Image Gallery..." />}>
+            <ReferenceGallery
               onAddEquipment={(type) => {
                 addNode(type);
                 setActiveTab('canvas');
               }}
-              onAddEquipmentFromCatalog={handleAddEquipmentFromCatalog}
+              onAddEquipmentFromCatalog={(item) => {
+                handleAddEquipmentFromCatalog(item);
+                setActiveTab('canvas');
+              }}
               catalogItems={catalogItems}
               onSaveCatalogItem={handleSaveCatalogItem}
-              activeSubTab={activeInventorySubTab}
-              setActiveSubTab={setActiveInventorySubTab}
             />
           </Suspense>
         )}
 
-        {/* TAB 4: Combined BIM Drawing Sheet, Project Settings & User Manual */}
-        {(activeTab === 'docs' || activeTab === 'bim' || activeTab === 'settings' || activeTab === 'manual') && (
-          <Suspense fallback={<ViewLoadingFallback label="Loading Documentation View..." />}>
-            <ProjectDocsCombinedView
-              nodes={nodes}
-              connections={connections}
-              metadata={metadata}
-              designNotes={designNotes}
-              onUpdateMetadata={updateMetadata}
-              onOpenAddModal={() => setIsAddModalOpen(true)}
-              activeSubTab={activeDocsSubTab}
-              setActiveSubTab={setActiveDocsSubTab}
-              onNavigateTab={(tab) => setActiveTab(tab as MainTabType)}
-            />
+        {/* TAB 3: Solar Load Calculator */}
+        {activeTab === 'calculator' && (
+          <Suspense fallback={<ViewLoadingFallback label="Loading Solar Load Calculator..." />}>
+            <SolarLoadCalculator />
           </Suspense>
         )}
       </main>

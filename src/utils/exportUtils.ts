@@ -10,10 +10,16 @@ export async function exportElementToPng(elementId: string, filename = 'hybrid-s
 
   try {
     const dataUrl = await toPng(node, {
-      cacheBust: true,
+      cacheBust: false,
       quality: 0.95,
       pixelRatio: 2,
       backgroundColor: '#f7fafe',
+      skipFonts: true,
+      filter: (domNode: HTMLElement) => {
+        // Skip script or problematic link/iframe elements
+        if (domNode.tagName === 'LINK' || domNode.tagName === 'SCRIPT') return false;
+        return true;
+      },
     });
 
     const link = document.createElement('a');
@@ -21,8 +27,22 @@ export async function exportElementToPng(elementId: string, filename = 'hybrid-s
     link.href = dataUrl;
     link.click();
   } catch (err) {
-    console.error('Error generating PNG export:', err);
-    alert('Export to PNG failed. Downloading vector SVG instead.');
+    console.warn('First PNG export attempt failed, retrying with fallback settings:', err);
+    try {
+      const dataUrl = await toPng(node, {
+        quality: 0.85,
+        pixelRatio: 1.5,
+        backgroundColor: '#f7fafe',
+        skipFonts: true,
+      });
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+    } catch (fallbackErr) {
+      console.error('Error generating PNG export:', fallbackErr);
+      alert('PNG export encounter a browser style embedding limitation. Please use the "Export SVG" button for high-resolution vector output.');
+    }
   }
 }
 

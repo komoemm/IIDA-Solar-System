@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
+  Printer,
+  Download,
+  FileCode,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -76,6 +79,11 @@ interface DiagramCanvasProps {
   designNotes: string;
   onChangeDesignNotes: (notes: string) => void;
 
+  // BIM Export Handlers
+  onExportPng?: () => void;
+  onExportSvg?: () => void;
+  onPrintSheet?: () => void;
+
   // Panel Toggles
   showPalette?: boolean;
   onTogglePalette?: () => void;
@@ -113,6 +121,9 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   onAddEquipmentFromDrop,
   designNotes,
   onChangeDesignNotes,
+  onExportPng,
+  onExportSvg,
+  onPrintSheet,
   showPalette = true,
   onTogglePalette,
   showProperties = true,
@@ -661,6 +672,38 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
 
           <div className="w-[1px] h-5 bg-[#c3c6d6] my-auto mx-1" />
 
+          {/* Embedded BIM Export Controls */}
+          <button
+            onClick={onPrintSheet || (() => window.print())}
+            className="px-2.5 py-1 text-xs font-bold text-[#003d9b] bg-[#dae2ff]/60 hover:bg-[#dae2ff] rounded flex items-center gap-1 transition-colors"
+            title="Print BIM Drawing Sheet"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Print Sheet</span>
+          </button>
+          {onExportPng && (
+            <button
+              onClick={onExportPng}
+              className="px-2.5 py-1 text-xs font-bold text-[#434654] hover:text-[#003d9b] hover:bg-[#f1f4f8] rounded flex items-center gap-1 transition-colors"
+              title="Export Canvas as PNG Image"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export PNG</span>
+            </button>
+          )}
+          {onExportSvg && (
+            <button
+              onClick={onExportSvg}
+              className="px-2.5 py-1 text-xs font-bold text-[#434654] hover:text-[#003d9b] hover:bg-[#f1f4f8] rounded flex items-center gap-1 transition-colors"
+              title="Export Vector SVG Drawing"
+            >
+              <FileCode className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export SVG</span>
+            </button>
+          )}
+
+          <div className="w-[1px] h-5 bg-[#c3c6d6] my-auto mx-1" />
+
           {/* Panel Visibility Controls */}
           {onTogglePalette && (
             <button
@@ -679,23 +722,6 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
             </button>
           )}
 
-          {onToggleBottomPanel && (
-            <button
-              onClick={onToggleBottomPanel}
-              aria-label={t('toggleBottomPanel')}
-              aria-expanded={showBottomPanel}
-              className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-semibold ${
-                showBottomPanel
-                  ? 'bg-[#003d9b] text-white'
-                  : 'text-[#737685] hover:bg-[#f1f4f8]'
-              }`}
-              title={t('toggleBottomPanel')}
-            >
-              <Sliders className="w-4 h-4" />
-              <span className="hidden lg:inline">{t('toggleBottomPanel')}</span>
-            </button>
-          )}
-
           {onToggleProperties && (
             <button
               onClick={onToggleProperties}
@@ -710,25 +736,6 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
             >
               <PanelRight className="w-4 h-4" />
               <span className="hidden lg:inline">{t('toggleProperties')}</span>
-            </button>
-          )}
-
-          {onToggleFocusCanvasMode && (
-            <button
-              onClick={onToggleFocusCanvasMode}
-              aria-label={isFocusCanvasMode ? t('showAllPanels') : t('focusCanvas')}
-              aria-pressed={isFocusCanvasMode}
-              className={`p-1.5 rounded transition-colors flex items-center gap-1 text-xs font-bold ${
-                isFocusCanvasMode
-                  ? 'bg-[#181c1f] text-white shadow-xs'
-                  : 'bg-[#dae2ff] text-[#003d9b] hover:bg-[#b9cde5]'
-              }`}
-              title={isFocusCanvasMode ? t('showAllPanels') : t('focusCanvas')}
-            >
-              {isFocusCanvasMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              <span className="hidden sm:inline">
-                {isFocusCanvasMode ? t('showAllPanels') : t('focusCanvas')}
-              </span>
             </button>
           )}
         </div>

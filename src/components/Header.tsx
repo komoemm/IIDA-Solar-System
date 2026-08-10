@@ -1,71 +1,28 @@
 import React from 'react';
 import {
   Sun,
-  RotateCcw,
-  RotateCw,
-  Layout,
-  Globe,
-  CloudUpload,
-  CloudDownload,
+  Printer,
   Layers,
-  Boxes,
   Images,
-  FolderKanban,
+  Calculator,
 } from 'lucide-react';
 import { ProjectMetadata } from '../types';
-import { useLanguage } from '../context/LanguageContext';
 
-export type MainTabType = 'canvas' | 'inventory' | 'gallery' | 'docs' | 'bim' | 'settings' | 'manual';
+export type MainTabType = 'canvas' | 'gallery' | 'calculator';
 
 interface HeaderProps {
   activeTab: MainTabType;
   setActiveTab: (tab: MainTabType) => void;
   metadata: ProjectMetadata;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-  onAutoLayout: () => void;
-  onOpenAddModal?: () => void;
-  onExportPng?: () => void;
-  onExportSvg?: () => void;
-  onExportJson?: () => void;
-  onImportJson?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onResetSample?: () => void;
-  onCloudSave?: () => void;
-  onCloudLoad?: () => void;
-  isCloudSaving?: boolean;
+  onPrintExport?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   metadata,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  onAutoLayout,
-  onOpenAddModal,
-  onExportPng,
-  onExportSvg,
-  onExportJson,
-  onImportJson,
-  onResetSample,
-  onCloudSave,
-  onCloudLoad,
-  isCloudSaving = false,
+  onPrintExport,
 }) => {
-  const { language, setLanguage, t } = useLanguage();
-
-  const isInventoryActive = activeTab === 'inventory' || activeTab === 'gallery';
-
-  const isDocsActive =
-    activeTab === 'docs' ||
-    activeTab === 'bim' ||
-    activeTab === 'settings' ||
-    activeTab === 'manual';
-
   return (
     <header className="fixed top-0 left-0 w-full z-40 bg-[#ffffff] border-b border-[#c3c6d6] shadow-sm font-sans" aria-label="IIDA Electronics Myanmar Header">
       {/* Top Banner Row */}
@@ -90,148 +47,70 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Global Action Tools */}
-        <div className="flex items-center gap-1.5">
-          {/* Language Switcher Button */}
+        {/* Global Action Tools - Print / Export Button */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setLanguage(language === 'en' ? 'ja' : 'en')}
-            aria-label={language === 'en' ? 'Switch to Japanese' : 'Switch to English'}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-all shadow-2xs"
-            title={language === 'en' ? 'Switch to Japanese (日本語)' : 'Switch to English'}
+            onClick={onPrintExport || (() => window.print())}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded-md shadow-xs transition-colors"
+            title="Print or Export Drawing Sheet"
           >
-            <Globe className="w-3.5 h-3.5 text-[#003d9b]" />
-            <span className="font-mono text-[11px] uppercase">
-              {language === 'en' ? 'EN' : 'JP'}
-            </span>
+            <Printer className="w-4 h-4" />
+            <span>Print / Export</span>
           </button>
-
-          {/* Undo/Redo */}
-          <div className="flex items-center border border-[#c3c6d6] rounded bg-[#f1f4f8] overflow-hidden">
-            <button
-              onClick={onUndo}
-              disabled={!canUndo}
-              aria-label={t('undo')}
-              aria-disabled={!canUndo}
-              className={`p-1.5 transition-colors ${
-                canUndo
-                  ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
-                  : 'text-[#737685] opacity-40 cursor-not-allowed'
-              }`}
-              title={t('undo')}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-            <div className="w-[1px] h-4 bg-[#c3c6d6]" />
-            <button
-              onClick={onRedo}
-              disabled={!canRedo}
-              aria-label={t('redo')}
-              aria-disabled={!canRedo}
-              className={`p-1.5 transition-colors ${
-                canRedo
-                  ? 'text-[#181c1f] hover:bg-[#e0e3e7]'
-                  : 'text-[#737685] opacity-40 cursor-not-allowed'
-              }`}
-              title={t('redo')}
-            >
-              <RotateCw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Auto Layout */}
-          <button
-            onClick={onAutoLayout}
-            aria-label={t('autoLayout')}
-            className="p-1.5 text-[#434654] hover:text-[#003d9b] bg-[#f1f4f8] hover:bg-[#e0e3e7] border border-[#c3c6d6] rounded transition-colors flex items-center gap-1 text-xs font-semibold"
-            title={t('autoLayout')}
-          >
-            <Layout className="w-3.5 h-3.5 text-[#003d9b]" />
-            <span className="hidden md:inline">{t('autoLayout')}</span>
-          </button>
-
-          {/* Firebase Cloud Sync Controls */}
-          {onCloudSave && (
-            <button
-              onClick={onCloudSave}
-              disabled={isCloudSaving}
-              aria-label={isCloudSaving ? t('savingToCloud') : t('cloudSave')}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#0052cc] rounded shadow-2xs transition-colors disabled:opacity-50"
-              title={t('cloudSave')}
-            >
-              <CloudUpload className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                {isCloudSaving ? t('savingToCloud') : t('cloudSave')}
-              </span>
-            </button>
-          )}
-
-          {onCloudLoad && (
-            <button
-              onClick={onCloudLoad}
-              aria-label={t('cloudLoad')}
-              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-[#003d9b] bg-[#dae2ff]/50 hover:bg-[#dae2ff] border border-[#a6c8ff] rounded transition-colors"
-              title={t('cloudLoad')}
-            >
-              <CloudDownload className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t('cloudLoad')}</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Navigation Tabs Bar with Small Icons */}
+      {/* Navigation Tabs Bar - Strictly 3 Main Tabs */}
       <nav className="h-10 px-4 md:px-6 flex items-center bg-[#ffffff] border-b border-[#c3c6d6] text-xs font-bold uppercase tracking-wider" aria-label="Main Application Navigation">
         <div className="flex h-full gap-1" role="tablist">
-          {/* Main Tab 1: Diagram Canvas */}
+          {/* Main Tab 1: Line Diagram (SLD) Canvas */}
           <button
             onClick={() => setActiveTab('canvas')}
             role="tab"
             aria-selected={activeTab === 'canvas'}
-            aria-label={t('navCanvas')}
-            className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
+            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
               activeTab === 'canvas'
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
             <Layers className="w-4 h-4 text-[#003d9b]" />
-            <span>{t('navCanvas')}</span>
+            <span>Line Diagram (SLD) Canvas</span>
           </button>
 
-          {/* Main Tab 2: Combined Equipment Inventory & Reference Gallery */}
+          {/* Main Tab 2: Equipment & Image Gallery */}
           <button
-            onClick={() => setActiveTab('inventory')}
+            onClick={() => setActiveTab('gallery')}
             role="tab"
-            aria-selected={isInventoryActive}
-            aria-label={t('navInventoryCombined')}
-            className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
-              isInventoryActive
+            aria-selected={activeTab === 'gallery'}
+            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
+              activeTab === 'gallery'
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <Boxes className="w-4 h-4 text-[#003d9b]" />
-            <span>{t('navInventoryCombined')}</span>
+            <Images className="w-4 h-4 text-[#003d9b]" />
+            <span>Equipment &amp; Image Gallery</span>
           </button>
 
-          {/* Main Tab 3: Combined BIM, Settings & Manual */}
+          {/* Main Tab 3: Solar Load Calculator */}
           <button
-            onClick={() => setActiveTab('docs')}
+            onClick={() => setActiveTab('calculator')}
             role="tab"
-            aria-selected={isDocsActive}
-            aria-label={t('navDocsCombined')}
-            className={`px-3.5 flex items-center gap-2 border-b-2 transition-all ${
-              isDocsActive
+            aria-selected={activeTab === 'calculator'}
+            className={`px-4 flex items-center gap-2 border-b-2 transition-all ${
+              activeTab === 'calculator'
                 ? 'border-[#003d9b] text-[#003d9b] bg-[#003d9b]/5 font-bold'
                 : 'border-transparent text-[#434654] hover:text-[#181c1f] hover:bg-[#f1f4f8]'
             }`}
           >
-            <FolderKanban className="w-4 h-4 text-[#003d9b]" />
-            <span>{t('navDocsCombined')}</span>
+            <Calculator className="w-4 h-4 text-[#003d9b]" />
+            <span>Solar Load Calculator</span>
           </button>
         </div>
       </nav>
     </header>
   );
 };
+
 
