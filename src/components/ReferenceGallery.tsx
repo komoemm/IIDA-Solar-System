@@ -6,12 +6,10 @@ import {
   Maximize2,
   X,
   Edit3,
-  Upload,
   FolderPlus,
   Sparkles,
   Check,
   DraftingCompass,
-  Image as ImageIcon,
   FileText,
   Send,
   CheckCircle2,
@@ -25,7 +23,6 @@ import { LIBRARY_ITEMS, EQUIPMENT_IMAGES } from '../data/presetData';
 import { EquipmentType, EquipmentLibraryItem } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { EquipmentSketchVector } from './EquipmentSketchVector';
-import { OptimizedImage } from './OptimizedImage';
 import { validateQuoteRequest, QuoteFormData } from '../data/solarData';
 
 interface ReferenceGalleryProps {
@@ -58,8 +55,6 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
   const [selectedPhotoItem, setSelectedPhotoItem] = useState<EquipmentLibraryItem | null>(null);
   const [editingItem, setEditingItem] = useState<EquipmentLibraryItem | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [displayMode, setDisplayMode] = useState<'sketch' | 'photo'>('sketch');
-  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   // Quote request state
   const [quoteItem, setQuoteItem] = useState<EquipmentLibraryItem | null>(null);
@@ -75,10 +70,6 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
   const [quoteErrors, setQuoteErrors] = useState<Record<string, string>>({});
 
   const { language, t } = useLanguage();
-
-  const handleImageError = (url: string) => {
-    setFailedImages((prev) => ({ ...prev, [url]: true }));
-  };
 
   // Escape key handler for all modals in ReferenceGallery
   useEffect(() => {
@@ -211,7 +202,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-[#181c1f]">
-              {t('refCatalog')}
+              Equipment CAD Vector Sketch & Technical Catalog Gallery
             </h1>
             <p className="text-xs text-[#434654] mt-0.5">
               Verified CAD vector schematics, electrical ratings, and technical documentation sheets for Solar & Hybrid Energy systems.
@@ -219,38 +210,15 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            {/* Display Mode Toggle */}
-            <div className="flex items-center bg-[#f1f4f8] p-1 rounded-lg border border-[#c3c6d6]">
-              <button
-                onClick={() => setDisplayMode('sketch')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all ${
-                  displayMode === 'sketch'
-                    ? 'bg-[#003d9b] text-white shadow-xs'
-                    : 'text-[#434654] hover:text-[#181c1f]'
-                }`}
-                title="Display technical CAD SVG vector sketch previews"
-              >
-                <DraftingCompass className="w-3.5 h-3.5" />
-                <span>Vector Sketch</span>
-              </button>
-
-              <button
-                onClick={() => setDisplayMode('photo')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all ${
-                  displayMode === 'photo'
-                    ? 'bg-[#003d9b] text-white shadow-xs'
-                    : 'text-[#434654] hover:text-[#181c1f]'
-                }`}
-                title="Display catalog photo previews"
-              >
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span>Photo View</span>
-              </button>
+            {/* Permanent Vector CAD Schematic Badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#dae2ff] text-[#003d9b] rounded-lg text-xs font-bold border border-[#b9cde5] shadow-2xs">
+              <DraftingCompass className="w-4 h-4 text-[#003d9b]" />
+              <span>100% Vector CAD Schematics</span>
             </div>
 
             <button
               onClick={openNewModal}
-              className="px-3.5 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+              className="px-3.5 py-2 bg-[#003d9b] hover:bg-[#0052cc] text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>+ Add Item</span>
@@ -299,29 +267,14 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
         {/* Reference Gallery Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((item, idx) => {
-            const isImageFailed = failedImages[item.imageUrl];
-            const useSketch = displayMode === 'sketch' || isImageFailed;
-
             return (
               <article
                 key={`${item.type}-${item.defaultName}-${idx}`}
                 className="bg-[#ffffff] border border-[#c3c6d6] hover:border-[#003d9b] rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
               >
-                {/* Equipment Vector Sketch or Photo Frame */}
+                {/* Equipment CAD Vector Sketch Frame */}
                 <div className="relative w-full h-48 bg-[#0f172a] overflow-hidden">
-                  {useSketch ? (
-                    <EquipmentSketchVector type={item.type} />
-                  ) : (
-                    <OptimizedImage
-                      src={item.imageUrl}
-                      alt={item.defaultName}
-                      width={400}
-                      height={300}
-                      equipmentType={item.type}
-                      onError={() => handleImageError(item.imageUrl)}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  )}
+                  <EquipmentSketchVector type={item.type} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
                   {/* Top Category Badge */}
@@ -437,20 +390,7 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative h-80 bg-[#0f172a] overflow-hidden">
-              {displayMode === 'sketch' || failedImages[selectedPhotoItem.imageUrl] ? (
-                <EquipmentSketchVector type={selectedPhotoItem.type} />
-              ) : (
-                <OptimizedImage
-                  src={selectedPhotoItem.imageUrl}
-                  alt={selectedPhotoItem.defaultName}
-                  width={800}
-                  height={600}
-                  priority={true}
-                  equipmentType={selectedPhotoItem.type}
-                  onError={() => handleImageError(selectedPhotoItem.imageUrl)}
-                  className="w-full h-full object-contain"
-                />
-              )}
+              <EquipmentSketchVector type={selectedPhotoItem.type} />
               <button
                 type="button"
                 onClick={() => setSelectedPhotoItem(null)}
@@ -1030,61 +970,14 @@ export const ReferenceGallery: React.FC<ReferenceGalleryProps> = ({
                 />
               </div>
 
-              {/* Reference Photo URL & File Upload */}
+              {/* CAD Vector Schematic Preview */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold text-[#434654]">
-                    Reference Photo URL / Local Upload:
-                  </label>
-                  <label className="cursor-pointer text-[10px] text-[#003d9b] font-bold bg-[#dae2ff] hover:bg-[#b9cde5] px-2 py-0.5 rounded flex items-center gap-1 transition-colors">
-                    <Upload className="w-3 h-3" />
-                    <span>Upload Image File</span>
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/webp, image/svg+xml"
-                      onChange={handleCatalogFileUpload}
-                      className="hidden"
-                    />
-                  </label>
+                <label className="block text-[11px] font-bold text-[#434654]">
+                  CAD Vector Schematic Preview:
+                </label>
+                <div className="w-full h-36 bg-[#0f172a] rounded-lg border border-[#c3c6d6] overflow-hidden relative shadow-inner">
+                  <EquipmentSketchVector type={formType} />
                 </div>
-                <input
-                  type="text"
-                  value={formImageUrl}
-                  onChange={(e) => setFormImageUrl(e.target.value)}
-                  placeholder="https://... or upload local image"
-                  className="w-full bg-[#f8fafc] border border-[#c3c6d6] rounded px-3 py-1.5 text-xs text-[#181c1f] focus:outline-none focus:border-[#003d9b]"
-                />
-
-                {/* Image Guidelines */}
-                <div className="p-2 bg-[#f1f4f8] border border-[#c3c6d6] rounded text-[10px] text-[#434654] space-y-0.5">
-                  <span className="font-bold text-[#003d9b] flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    <span>Image Guidelines for Web Performance & UX:</span>
-                  </span>
-                  <ul className="list-disc list-inside text-[9.5px] space-y-0.5 pl-0.5">
-                    <li><strong>Formats:</strong> JPG, PNG, WebP, SVG</li>
-                    <li><strong>Size Limit:</strong> &lt; 2 MB for smooth canvas rendering</li>
-                    <li><strong>Aspect Ratio:</strong> 1:1 Square or 4:3 Standard Ratio</li>
-                  </ul>
-                </div>
-
-                {formImageUrl && (
-                  <div className="flex items-center gap-2 p-2 bg-[#ffffff] border border-[#c3c6d6] rounded">
-                    <OptimizedImage
-                      src={formImageUrl}
-                      alt="Catalog Item Preview"
-                      width={100}
-                      height={100}
-                      equipmentType={formType}
-                      containerClassName="w-12 h-12 rounded border border-[#c3c6d6] overflow-hidden shrink-0"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="text-[10px] text-[#181c1f]">
-                      <span className="font-bold block text-[#003d9b]">Photo Preview Loaded</span>
-                      <span className="text-[#737685]">Ready to be set in catalog & BIM diagram</span>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div>

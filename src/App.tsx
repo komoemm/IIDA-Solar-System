@@ -429,6 +429,7 @@ export default function App() {
               designNotes={designNotes}
               onChangeDesignNotes={updateDesignNotes}
               onPrintSheet={handlePrintSheet}
+              onResetToDefault={resetToDefault}
               showPalette={showPalette}
               onTogglePalette={() => setShowPalette(!showPalette)}
               showProperties={showProperties}

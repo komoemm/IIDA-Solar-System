@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   Edit3,
   FileText,
+  RotateCcw,
 } from 'lucide-react';
 import {
   EquipmentNode,
@@ -78,6 +79,7 @@ interface DiagramCanvasProps {
 
   // BIM Print/Export Handler
   onPrintSheet?: () => void;
+  onResetToDefault?: () => void;
 
   // Panel Toggles
   showPalette?: boolean;
@@ -117,6 +119,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   designNotes,
   onChangeDesignNotes,
   onPrintSheet,
+  onResetToDefault,
   showPalette = true,
   onTogglePalette,
   showProperties = true,
@@ -135,6 +138,7 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
   const [showPhotos, setShowPhotos] = useState(true);
   const [animateFlow, setAnimateFlow] = useState(true);
   const [isAddLegendModalOpen, setIsAddLegendModalOpen] = useState(false);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
 
   // Active Selected Node IDs helper (Memoized to prevent redundant array recreations)
   const activeSelectedIds = useMemo(
@@ -637,6 +641,19 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
             {viewStyle === 'card' ? 'BIM View' : 'CAD View'}
           </button>
 
+          {/* Reset to Official SLD Action Button */}
+          {onResetToDefault && (
+            <button
+              onClick={() => setShowResetConfirmModal(true)}
+              aria-label="Reset to Official SLD"
+              className="px-2.5 py-1 text-xs font-bold rounded transition-colors bg-[#dae2ff] text-[#003d9b] hover:bg-[#c1d3ff] flex items-center gap-1.5 shadow-xs"
+              title="Reset canvas to official IIDA 124.8 kWp Solis Hybrid System topology"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[#003d9b]" />
+              <span className="hidden sm:inline">Reset to Official SLD</span>
+            </button>
+          )}
+
           {/* Photos Toggle */}
           <button
             onClick={() => setShowPhotos(!showPhotos)}
@@ -760,6 +777,50 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           backgroundPosition: `${pan.x}px ${pan.y}px`,
         }}
       >
+        {/* Empty State Banner when nodes.length === 0 */}
+        {nodes.length === 0 && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center p-6 pointer-events-none">
+            <div className="pointer-events-auto bg-white/95 backdrop-blur-md border border-[#c3c6d6] shadow-2xl rounded-2xl p-8 max-w-lg w-full text-center flex flex-col items-center space-y-4 animate-scale-up">
+              <div className="w-16 h-16 rounded-2xl bg-[#dae2ff] text-[#003d9b] flex items-center justify-center shadow-inner">
+                <Zap className="w-8 h-8 text-[#003d9b] fill-[#003d9b]/20" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-extrabold text-[#181c1f] tracking-tight">
+                  Canvas is Empty
+                </h3>
+                <p className="text-sm font-medium text-[#434654]">
+                  No components currently placed on the diagram.
+                </p>
+              </div>
+
+              <div className="bg-[#f1f4f8] border border-[#dce2f0] rounded-xl p-3.5 w-full text-left text-xs text-[#2e313d] space-y-1.5">
+                <span className="font-bold text-[#003d9b] block uppercase tracking-wider text-[10px]">
+                  Official System Dataset Topology:
+                </span>
+                <ul className="list-disc list-inside space-y-1 text-[#434654] font-sans">
+                  <li>Trina 710W (85.2 kWp) & Jinko 550W (39.6 kWp) Solar Panels</li>
+                  <li>10-String PV Combiner Box with 6mm² Cables</li>
+                  <li>Dual Solis 50kW Parallel Inverters (100kW AC Output)</li>
+                  <li>20x Eenovance LiFePO4 Battery Bank (286.7 kWh)</li>
+                  <li>Solar AC DB Panel with 4P 160A MCCB & 70mm² Cu Feeder</li>
+                  <li>ATS Panel (Grid/Genset) & Dual Essential/Heavy Load COS Panels</li>
+                </ul>
+              </div>
+
+              {onResetToDefault && (
+                <button
+                  onClick={() => {
+                    onResetToDefault();
+                  }}
+                  className="w-full py-3.5 px-6 rounded-xl bg-[#003d9b] hover:bg-[#002b70] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                >
+                  <Zap className="w-4.5 h-4.5 fill-white" />
+                  <span>⚡ Load Official IIDA Factory SLD (124.8 kWp)</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {/* Canvas World Transform Wrapper */}
         <div
           style={{
@@ -1414,6 +1475,71 @@ export const DiagramCanvas: React.FC<DiagramCanvasProps> = ({
           }
         }}
       />
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-[#00102b]/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div
+            className="bg-white border border-[#c3c6d6] shadow-2xl rounded-2xl max-w-md w-full p-6 space-y-5 animate-scale-up"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-modal-title"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#dae2ff] text-[#003d9b] flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 id="reset-modal-title" className="text-lg font-bold text-[#181c1f]">
+                    Reset to Official Factory SLD
+                  </h3>
+                  <p className="text-xs text-[#737685] font-mono">
+                    IMM-FAC-SLD-124.8K Topology
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowResetConfirmModal(false)}
+                className="text-[#737685] hover:text-[#181c1f] p-1 rounded-lg hover:bg-[#f1f4f8] transition-colors"
+                aria-label="Close dialog"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 bg-[#f8fafc] border border-[#e2e8f0] p-3.5 rounded-xl text-xs text-[#334155]">
+              <p className="font-semibold text-[#0f172a] text-sm">
+                Reset canvas to official IIDA 124.8 kWp Solis Hybrid System topology?
+              </p>
+              <p className="text-[#475569] leading-relaxed">
+                This action will restore all equipment nodes, wire interconnects, electrical ratings, and technical notes to the factory reference dataset (124.8 kWp PV Array + 286.7 kWh Eenovance BESS).
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowResetConfirmModal(false)}
+                className="px-4 py-2 text-xs font-bold text-[#475569] hover:bg-[#f1f5f9] rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (onResetToDefault) {
+                    onResetToDefault();
+                  }
+                  setShowResetConfirmModal(false);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#003d9b] hover:bg-[#002b70] rounded-lg shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Confirm Reset</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

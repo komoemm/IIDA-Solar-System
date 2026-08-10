@@ -463,10 +463,11 @@ export function useDiagramState() {
     setConnections(INITIAL_CONNECTIONS);
     setMetadata(DEFAULT_METADATA);
     setDesignNotes(INITIAL_DESIGN_NOTES);
-    setSelectedNodeId('INV-01');
+    setLegendTypes(DEFAULT_LEGEND_TYPES);
+    handleSetSelectedNodeId(INITIAL_NODES[0]?.id || 'INV-01');
     setSelectedConnectionId(null);
     saveStateToHistory(INITIAL_NODES, INITIAL_CONNECTIONS, DEFAULT_METADATA, INITIAL_DESIGN_NOTES);
-  }, [saveStateToHistory]);
+  }, [handleSetSelectedNodeId, saveStateToHistory]);
 
   // Load custom state from JSON file
   const loadState = useCallback(
