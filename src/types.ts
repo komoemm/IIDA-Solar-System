@@ -104,15 +104,27 @@ export interface EquipmentLibraryItem {
 
 export type LoadCategory = 'Critical' | 'Essential' | 'Non-Essential';
 
+export type LoadPriority =
+  | 'Priority 1 (Critical)'
+  | 'Priority 2 (Standard Production)'
+  | 'Priority 3 (Heavy Non-Essential)';
+
+export type OperationalSchedule =
+  | 'Day Shift (08:00 - 17:00)'
+  | 'Night Shift (17:00 - 01:00)'
+  | '24/7 Continuous';
+
 export interface LoadItem {
   id: string;
   name: string;
   category: LoadCategory;
+  priorityLevel?: LoadPriority;
   quantity: number;
   watts: number;
   hoursPerDay: number;
   surgeFactor: number;
   powerFactor: number; // default 0.85
   diversityFactor: number; // default 0.80
+  operationalSchedule?: OperationalSchedule;
 }
 

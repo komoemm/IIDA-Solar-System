@@ -41,101 +41,101 @@ export interface SolarCatalogItem extends EquipmentLibraryItem {
 
 export const SOLAR_PRODUCT_CATALOG: SolarCatalogItem[] = [
   {
-    id: 'inv-12kw-3p',
+    id: 'solis-110kw-inv',
     type: 'inverter',
-    defaultName: 'IIDA 12kW High-Voltage Hybrid Inverter',
+    defaultName: 'Solis S6 110kW Industrial Hybrid Inverter',
     category: 'Conversion',
-    defaultCapacity: '12.0 kW AC / 18.0 kW DC',
-    defaultVoltage: '400V 3-Phase / 800V DC MPPT',
-    defaultManufacturer: 'IIDA Electronics',
-    defaultModel: 'IIDA-HYB-12K-3P',
+    defaultCapacity: '110.0 kW AC / 165.0 kW DC',
+    defaultVoltage: '400V 3-Phase / 1000V DC MPPT',
+    defaultManufacturer: 'Solis (Ginlong Technologies)',
+    defaultModel: 'Solis-S6-EH3P110K-H',
     imageUrl: 'https://images.unsplash.com/photo-1613665813446-82a78c468a1d?q=80&w=800&auto=format&fit=crop',
-    specSheetUrl: 'https://example.com/specs/iida-hyb-12k.pdf',
-    description: 'Commercial 3-phase hybrid inverter with dual MPPTs, 10ms UPS transfer time, and remote CAN/RS485 monitoring.',
+    specSheetUrl: 'https://example.com/specs/solis-s6-110k.pdf',
+    description: 'Utility & industrial 3-phase hybrid inverter with 10 MPPTs, 165kW max PV input, integrated Solis Cloud EMS monitoring, and 100kW+ factory parallel grid capability.',
     iconName: 'Zap',
-    sku: 'IIDA-INV-12KW-3P',
-    priceMmk: 4500000,
-    warrantyYears: 5,
-    isFeatured: true,
-    specifications: {
-      'Nominal AC Output': '12,000 W',
-      'Max PV Input': '18,000 W',
-      'MPPT Voltage Range': '160 - 800 VDC',
-      'Efficiency': '97.6%',
-      'Transfer Time': '< 10 ms',
-    },
-  },
-  {
-    id: 'bat-51v-15kwh',
-    type: 'battery',
-    defaultName: 'IIDA 15.3kWh LFP Energy Storage Rack',
-    category: 'Storage',
-    defaultCapacity: '15.36 kWh (51.2V 300Ah)',
-    defaultVoltage: '51.2 VDC Nominal',
-    defaultManufacturer: 'IIDA Battery Systems',
-    defaultModel: 'IIDA-LFP-51V300A',
-    imageUrl: 'https://images.unsplash.com/photo-1558441719-670b357029b7?q=80&w=800&auto=format&fit=crop',
-    specSheetUrl: 'https://example.com/specs/iida-lfp-15kwh.pdf',
-    description: 'High-density Tier-1 LiFePO4 battery cabinet with active BMS balancing, 6000+ cycle life, and thermal safety cutouts.',
-    iconName: 'Battery',
-    sku: 'IIDA-BAT-51V-15KWH',
-    priceMmk: 6800000,
+    sku: 'SOLIS-INV-110KW-3P',
+    priceMmk: 38500000,
     warrantyYears: 10,
     isFeatured: true,
     specifications: {
-      'Capacity': '15.36 kWh (300 Ah)',
-      'Chemistry': 'Lithium Iron Phosphate (LiFePO4)',
-      'Cycle Life': '> 6,000 cycles @ 80% DOD',
-      'Continuous Discharging': '150 A',
-      'Communication': 'CAN / RS485 / Wi-Fi',
+      'Nominal AC Output': '110,000 W (110 kW)',
+      'Max PV Array Capacity': '165,000 W (165 kWp)',
+      'MPPT Channels': '10 MPPTs / 20 Inputs',
+      'Max Efficiency': '98.8%',
+      'Grid Switching': '< 10 ms UPS Automatic',
     },
   },
   {
-    id: 'pv-580w-mono',
+    id: 'solis-124k-pv',
     type: 'pv_array',
-    defaultName: 'IIDA 580W N-Type Bifacial Solar Panel',
+    defaultName: 'Solis 124.8 kWp Factory Solar Array',
     category: 'Generation',
-    defaultCapacity: '580W per module (22.8% Eff)',
-    defaultVoltage: '42.2 VDC Vmp / 50.8 VDC Voc',
-    defaultManufacturer: 'IIDA Solar Tech',
-    defaultModel: 'IIDA-PV-580W-N',
+    defaultCapacity: '124.8 kWp (215 Modules @ 580W)',
+    defaultVoltage: '720 VDC Operating / 1000 VDC Max',
+    defaultManufacturer: 'Solis / IIDA Solar Tech',
+    defaultModel: 'Solis-PV-124.8KW-TOPCon',
     imageUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?q=80&w=800&auto=format&fit=crop',
-    specSheetUrl: 'https://example.com/specs/iida-pv-580w.pdf',
-    description: 'Topcon N-type dual-glass bifacial solar panel with 30-year performance linear output guarantee for Myanmar tropical climates.',
+    specSheetUrl: 'https://example.com/specs/solis-pv-124k.pdf',
+    description: 'Factory rooftop solar plant specs: 124.8 kWp N-type TOPCon bifacial monocrystalline PV array optimized for 08:00-17:00 day shift solar generation.',
     iconName: 'Sun',
-    sku: 'IIDA-PV-580W-N',
-    priceMmk: 295000,
+    sku: 'SOLIS-PV-124.8KW',
+    priceMmk: 63420000,
     warrantyYears: 12,
     isFeatured: true,
     specifications: {
-      'Maximum Power (Pmax)': '580 W',
+      'Array Total Capacity': '124.8 kWp',
+      'Module Quantity': '215 Modules @ 580W',
       'Module Efficiency': '22.8%',
-      'Power Tolerance': '0~+5 W',
-      'Bifaciality Ratio': '80 ± 5%',
+      'Daily Generation (Yangon)': '590 - 620 kWh/day',
       'Temperature Coeff': '-0.30% / °C',
     },
   },
   {
-    id: 'comb-4str-1000v',
-    type: 'combiner_box',
-    defaultName: 'IIDA 4-String Smart DC Combiner Box',
-    category: 'Generation',
-    defaultCapacity: '100A DC Continuous',
-    defaultVoltage: '1000 VDC Max',
-    defaultManufacturer: 'IIDA Power Enclosures',
-    defaultModel: 'IIDA-DC-COMB-4P',
-    imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop',
-    specSheetUrl: 'https://example.com/specs/iida-dc-combiner.pdf',
-    description: 'IP65 waterproof DC junction box with 1000V fuses, isolation switch, and Type 2 DC surge protection device.',
-    iconName: 'Box',
-    sku: 'IIDA-DC-COMB-4P',
-    priceMmk: 480000,
-    warrantyYears: 3,
+    id: 'bat-bess-200kwh',
+    type: 'battery',
+    defaultName: 'Solis High-Voltage 200kWh Industrial BESS',
+    category: 'Storage',
+    defaultCapacity: '204.8 kWh (640V 320Ah LFP)',
+    defaultVoltage: '640 VDC High Voltage Bus',
+    defaultManufacturer: 'Solis Energy Storage',
+    defaultModel: 'Solis-BESS-HV-200K',
+    imageUrl: 'https://images.unsplash.com/photo-1558441719-670b357029b7?q=80&w=800&auto=format&fit=crop',
+    specSheetUrl: 'https://example.com/specs/solis-bess-200k.pdf',
+    description: 'Containerized industrial LiFePO4 battery cabinet with active thermal management, fire suppression, and liquid-cooled BMS.',
+    iconName: 'Battery',
+    sku: 'SOLIS-BAT-HV-200KWH',
+    priceMmk: 85000000,
+    warrantyYears: 10,
+    isFeatured: true,
     specifications: {
-      'Max Strings': '4 Input / 1 Output',
-      'Enclosure Rating': 'IP65 NEMA 4X',
-      'Surge Protection': '1000V DC Type 2 SPD',
-      'Isolator Switch': '125A DC Break Switch',
+      'Capacity': '204.8 kWh',
+      'Nominal Voltage': '640 VDC',
+      'Chemistry': 'Tier-1 LiFePO4',
+      'Cycle Life': '> 8,000 cycles @ 80% DOD',
+      'Cooling': 'Liquid Cooled Active Thermal',
+    },
+  },
+  {
+    id: 'comb-10str-1000v',
+    type: 'combiner_box',
+    defaultName: 'Solis 10-String Industrial DC Combiner',
+    category: 'Generation',
+    defaultCapacity: '250A DC Continuous',
+    defaultVoltage: '1000 VDC Max',
+    defaultManufacturer: 'Solis Electric',
+    defaultModel: 'Solis-DC-COMB-10P',
+    imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=800&auto=format&fit=crop',
+    specSheetUrl: 'https://example.com/specs/solis-dc-combiner.pdf',
+    description: 'Industrial IP66 rated DC combiner enclosure with 20x 1000V fuses, motorized DC isolation switch, and Type 1+2 surge arrestors.',
+    iconName: 'Box',
+    sku: 'SOLIS-DC-COMB-10P',
+    priceMmk: 1250000,
+    warrantyYears: 5,
+    specifications: {
+      'Max Strings': '10 Input / 2 Output',
+      'Enclosure Rating': 'IP66 NEMA 4X Heavy Duty',
+      'Surge Protection': '1000V DC Type 1+2 SPD',
+      'Isolator Switch': '250A Motorized DC Break',
     },
   },
 ];
@@ -189,6 +189,10 @@ export interface EmsSimulationResult {
   totalBatteryDischargedKwh: number;
   totalBatteryChargedKwh: number;
   solarSelfConsumptionRatio: number; // %
+  dayShiftSolarGeneratedKwh: number; // 08:00 - 17:00 Total PV generated
+  dayShiftFactoryLoadKwh: number; // 08:00 - 17:00 Total Factory Load required
+  dayShiftSelfConsumptionRatio: number; // % Day Shift Solar Self-Consumption Ratio
+  dayShiftSolarCoverageRatio: number; // % Day Shift Load Coverage by Solar
   gridDependenceRatio: number; // %
   minSocPercent: number;
   maxSocPercent: number;
@@ -205,6 +209,8 @@ export interface SolarSizingResult {
   peakSurgeKva: number;
   recommendedPvKw: number;
   recommendedBatteryKwh: number;
+  recommendedUsableBatteryKwh: number; // Total kWh * DoD (default 80%)
+  batteryDodPercent: number; // DoD %
   recommendedInverterKw: number;
   maxDcCurrentAmps: number;
   recommendedFuseAmps: number;
@@ -224,7 +230,8 @@ export function runEmsSimulation(
   batteryKwh: number,
   dailyLoadKwh: number,
   peakSunHours: number,
-  minSoc: number = 20
+  minSoc: number = 20,
+  loadItems?: LoadItem[]
 ): EmsSimulationResult {
   const hourlyProfile: EmsHourlyStep[] = [];
   const psh = Math.max(1.0, peakSunHours);
@@ -240,7 +247,40 @@ export function runEmsSimulation(
   const sumSolarFactors = solarFactors.reduce((a, b) => a + b, 0);
   const targetDailySolarKwh = pvKw * psh * sysLoss;
 
-  // Industrial factory 24h demand distribution curve (normalized)
+  // Build itemized operational schedule load curve if loadItems are provided
+  const itemizedHourlyLoadKw = new Array(24).fill(0);
+  let hasValidScheduleLoads = false;
+
+  if (loadItems && loadItems.length > 0) {
+    loadItems.forEach((item) => {
+      const qty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      const watts = Math.max(0, Number(item.watts) || 0);
+      const df = Math.max(0.1, Math.min(1.0, Number(item.diversityFactor) || 0.80));
+      const activeKw = (qty * watts * df) / 1000;
+      if (activeKw <= 0) return;
+
+      hasValidScheduleLoads = true;
+      const sched = item.operationalSchedule || '24/7 Continuous';
+
+      if (sched === 'Day Shift (08:00 - 17:00)') {
+        for (let h = 8; h <= 16; h++) {
+          itemizedHourlyLoadKw[h] += activeKw;
+        }
+      } else if (sched === 'Night Shift (17:00 - 01:00)') {
+        for (let h = 17; h <= 23; h++) {
+          itemizedHourlyLoadKw[h] += activeKw;
+        }
+        itemizedHourlyLoadKw[0] += activeKw;
+      } else {
+        // 24/7 Continuous
+        for (let h = 0; h < 24; h++) {
+          itemizedHourlyLoadKw[h] += activeKw;
+        }
+      }
+    });
+  }
+
+  // Industrial factory 24h fallback curve if no schedule load items
   const loadFactors = [
     0.30, 0.28, 0.25, 0.25, 0.30, 0.45, // 00:00 - 05:00 (Night base load)
     0.65, 0.85, 1.00, 1.00, 0.95, 0.90, // 06:00 - 11:00 (Day shift peak)
@@ -258,10 +298,20 @@ export function runEmsSimulation(
   let minSocSeen = 100;
   let maxSocSeen = 0;
 
+  // Day shift metrics (08:00 - 17:00 -> hours 8 through 16)
+  let dayShiftSolarGen = 0;
+  let dayShiftLoadReq = 0;
+  let dayShiftSolarToLoad = 0;
+  let dayShiftSolarToBat = 0;
+
   for (let h = 0; h < 24; h++) {
     const timeLabel = `${String(h).padStart(2, '0')}:00`;
     const hourSolarKw = sumSolarFactors > 0 ? (solarFactors[h] / sumSolarFactors) * targetDailySolarKwh : 0;
-    const hourLoadKw = sumLoadFactors > 0 ? (loadFactors[h] / sumLoadFactors) * dailyLoadKwh : 0;
+    const hourLoadKw = hasValidScheduleLoads
+      ? itemizedHourlyLoadKw[h]
+      : sumLoadFactors > 0
+      ? (loadFactors[h] / sumLoadFactors) * dailyLoadKwh
+      : 0;
 
     totalSolarGenKwh += hourSolarKw;
     totalLoadKwh += hourLoadKw;
@@ -323,6 +373,14 @@ export function runEmsSimulation(
     minSocSeen = Math.min(minSocSeen, currentSoc);
     maxSocSeen = Math.max(maxSocSeen, currentSoc);
 
+    // Track Day Shift specific hours (08:00 - 17:00 -> hours 8 through 16)
+    if (h >= 8 && h <= 16) {
+      dayShiftSolarGen += hourSolarKw;
+      dayShiftLoadReq += hourLoadKw;
+      dayShiftSolarToLoad += solarToLoadKw;
+      dayShiftSolarToBat += solarToBatteryKw;
+    }
+
     hourlyProfile.push({
       hour: h,
       timeLabel,
@@ -341,6 +399,14 @@ export function runEmsSimulation(
     ? Math.min(100, Math.round(((totalLoadKwh + totalBatCharged - totalGridKwh) / totalSolarGenKwh) * 100))
     : 0;
 
+  const dayShiftSelfConsumptionRatio = dayShiftSolarGen > 0
+    ? Math.min(100, Math.round(((dayShiftSolarToLoad + dayShiftSolarToBat) / dayShiftSolarGen) * 100))
+    : 0;
+
+  const dayShiftSolarCoverageRatio = dayShiftLoadReq > 0
+    ? Math.min(100, Math.round((dayShiftSolarToLoad / dayShiftLoadReq) * 100))
+    : 0;
+
   const gridDependence = totalLoadKwh > 0
     ? Math.round((totalGridKwh / totalLoadKwh) * 100)
     : 0;
@@ -353,6 +419,10 @@ export function runEmsSimulation(
     totalBatteryDischargedKwh: Math.round(totalBatDischarged * 10) / 10,
     totalBatteryChargedKwh: Math.round(totalBatCharged * 10) / 10,
     solarSelfConsumptionRatio: Math.max(0, solarSelfConsumption),
+    dayShiftSolarGeneratedKwh: Math.round(dayShiftSolarGen * 10) / 10,
+    dayShiftFactoryLoadKwh: Math.round(dayShiftLoadReq * 10) / 10,
+    dayShiftSelfConsumptionRatio: Math.max(0, dayShiftSelfConsumptionRatio),
+    dayShiftSolarCoverageRatio: Math.max(0, dayShiftSolarCoverageRatio),
     gridDependenceRatio: Math.max(0, gridDependence),
     minSocPercent: Math.round(minSocSeen),
     maxSocPercent: Math.round(maxSocSeen),
@@ -500,6 +570,8 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
       peakSurgeKva: 0,
       recommendedPvKw: 0,
       recommendedBatteryKwh: 0,
+      recommendedUsableBatteryKwh: 0,
+      batteryDodPercent: sanitizedDod,
       recommendedInverterKw: 0,
       maxDcCurrentAmps: 0,
       recommendedFuseAmps: 0,
@@ -552,8 +624,8 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
   const recBatKwh = Math.ceil(requiredBatteryKwh * 10) / 10;
   const minSocLimit = 100 - sanitizedDod;
 
-  // Execute 3-Stage EMS Flow Simulation
-  const emsSimulation = runEmsSimulation(recPvKw, recBatKwh, dailyKwh, sanitizedPsh, minSocLimit);
+  // Execute 3-Stage EMS Flow Simulation with operational schedule itemized loads
+  const emsSimulation = runEmsSimulation(recPvKw, recBatKwh, dailyKwh, sanitizedPsh, minSocLimit, input.loadItems);
 
   return {
     totalInstalledKw: Math.round((totalInstalledWatts / 1000) * 100) / 100,
@@ -566,6 +638,8 @@ export function calculateSolarSizing(input: SolarSizingInput): SolarSizingResult
     peakSurgeKva: Math.round((totalPeakSurgeVa / 1000) * 10) / 10,
     recommendedPvKw: recPvKw,
     recommendedBatteryKwh: recBatKwh,
+    recommendedUsableBatteryKwh: Math.round(recBatKwh * (sanitizedDod / 100) * 10) / 10,
+    batteryDodPercent: sanitizedDod,
     recommendedInverterKw: Math.ceil(requiredInverterKw * 10) / 10,
     maxDcCurrentAmps: Math.round(maxDcCurrentAmps),
     recommendedFuseAmps,

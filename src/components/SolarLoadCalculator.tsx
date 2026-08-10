@@ -1,34 +1,49 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
+  LoadItem,
+  LoadCategory,
+  LoadPriority,
+  OperationalSchedule,
+} from '../types';
+import {
+  calculateSolarSizing,
+  REGIONAL_SOLAR_CONSTANTS,
+  SolarSizingResult,
+} from '../data/solarData';
+import {
   Calculator,
-  Zap,
-  Sun,
-  Battery,
-  Clock,
   Plus,
   Trash2,
-  CheckCircle2,
-  ArrowRight,
-  Sparkles,
   Sliders,
-  RotateCcw,
-  Gauge,
+  Zap,
+  Activity,
+  PieChart as PieChartIcon,
+  Sun,
+  Battery,
+  Building2,
   Cpu,
-  Layers,
-  ShieldCheck,
+  RotateCcw,
+  CheckCircle2,
   AlertTriangle,
-  Info,
   Play,
   Pause,
-  Activity,
-  ArrowDown,
-  ArrowUp,
-  Server,
-  Building2,
-  PieChart as PieChartIcon,
+  Clock,
+  Gauge,
+  Factory,
+  ShieldAlert,
+  Power,
+  ToggleLeft,
+  ToggleRight,
+  ChevronRight,
+  Info,
+  Layers,
+  DollarSign,
+  TrendingUp,
+  Coins,
+  BarChart3,
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import {
-  ResponsiveContainer,
   ComposedChart,
   Area,
   Line,
@@ -37,16 +52,10 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  ResponsiveContainer,
 } from 'recharts';
-import { useDebounceValue } from '../hooks/useDebounce';
-import { useLanguage } from '../context/LanguageContext';
-import { EquipmentNode, LoadCategory, LoadItem } from '../types';
-import { calculateSolarSizing, REGIONAL_SOLAR_CONSTANTS } from '../data/solarData';
-
-export type { LoadItem };
 
 interface SolarLoadCalculatorProps {
-  nodes?: EquipmentNode[];
   onApplySizingToDiagram?: (sizing: {
     recommendedPvKw: number;
     recommendedBatteryKwh: number;
@@ -58,58 +67,68 @@ interface SolarLoadCalculatorProps {
 const DEFAULT_LOAD_ITEMS: LoadItem[] = [
   {
     id: '1',
-    name: 'Critical Server Room & Automation PLC',
+    name: 'Factory Main HVAC Industrial Chiller',
+    category: 'Non-Essential',
+    priorityLevel: 'Priority 3 (Heavy Non-Essential)',
+    quantity: 2,
+    watts: 25000,
+    hoursPerDay: 9,
+    surgeFactor: 2.5,
+    powerFactor: 0.85,
+    diversityFactor: 0.80,
+    operationalSchedule: 'Day Shift (08:00 - 17:00)',
+  },
+  {
+    id: '2',
+    name: 'Assembly Line CNC Motors & Drives',
+    category: 'Essential',
+    priorityLevel: 'Priority 2 (Standard Production)',
+    quantity: 3,
+    watts: 12000,
+    hoursPerDay: 9,
+    surgeFactor: 3.0,
+    powerFactor: 0.82,
+    diversityFactor: 0.85,
+    operationalSchedule: 'Day Shift (08:00 - 17:00)',
+  },
+  {
+    id: '3',
+    name: 'Critical Data Server & Automation PLCs',
     category: 'Critical',
+    priorityLevel: 'Priority 1 (Critical)',
     quantity: 1,
-    watts: 3200,
+    watts: 8500,
     hoursPerDay: 24,
     surgeFactor: 1.2,
     powerFactor: 0.95,
     diversityFactor: 1.0,
-  },
-  {
-    id: '2',
-    name: 'HVAC Industrial Chiller Unit',
-    category: 'Essential',
-    quantity: 2,
-    watts: 4500,
-    hoursPerDay: 10,
-    surgeFactor: 2.5,
-    powerFactor: 0.82,
-    diversityFactor: 0.75,
-  },
-  {
-    id: '3',
-    name: 'Factory High-Bay LED Lighting',
-    category: 'Non-Essential',
-    quantity: 25,
-    watts: 120,
-    hoursPerDay: 12,
-    surgeFactor: 1.1,
-    powerFactor: 0.92,
-    diversityFactor: 0.90,
+    operationalSchedule: '24/7 Continuous',
   },
   {
     id: '4',
-    name: 'Assembly Line Motors & Drives',
-    category: 'Essential',
-    quantity: 4,
-    watts: 2200,
-    hoursPerDay: 8,
-    surgeFactor: 3.0,
-    powerFactor: 0.80,
-    diversityFactor: 0.80,
+    name: 'High-Bay Factory LED Bay Lights',
+    category: 'Critical',
+    priorityLevel: 'Priority 1 (Critical)',
+    quantity: 60,
+    watts: 180,
+    hoursPerDay: 24,
+    surgeFactor: 1.1,
+    powerFactor: 0.92,
+    diversityFactor: 0.90,
+    operationalSchedule: '24/7 Continuous',
   },
   {
     id: '5',
-    name: 'Submersible Water Pump Station',
-    category: 'Essential',
-    quantity: 1,
-    watts: 3000,
-    hoursPerDay: 4,
-    surgeFactor: 3.5,
-    powerFactor: 0.78,
-    diversityFactor: 0.70,
+    name: 'Night Shift Packaging Machine & Conveyor',
+    category: 'Non-Essential',
+    priorityLevel: 'Priority 3 (Heavy Non-Essential)',
+    quantity: 2,
+    watts: 7500,
+    hoursPerDay: 8,
+    surgeFactor: 2.0,
+    powerFactor: 0.80,
+    diversityFactor: 0.75,
+    operationalSchedule: 'Night Shift (17:00 - 01:00)',
   },
 ];
 
@@ -123,7 +142,7 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
   const [loadItems, setLoadItems] = useState<LoadItem[]>(DEFAULT_LOAD_ITEMS);
   const [peakSunHours, setPeakSunHours] = useState<number>(REGIONAL_SOLAR_CONSTANTS.DEFAULT_PEAK_SUN_HOURS);
   const [inverterEfficiency, setInverterEfficiency] = useState<number>(REGIONAL_SOLAR_CONSTANTS.DEFAULT_INVERTER_EFFICIENCY);
-  const [batteryDod, setBatteryDod] = useState<number>(REGIONAL_SOLAR_CONSTANTS.DEFAULT_BATTERY_DOD);
+  const [batteryDod, setBatteryDod] = useState<number>(REGIONAL_SOLAR_CONSTANTS.DEFAULT_BATTERY_DOD); // Default 80%
   const [autonomyDays, setAutonomyDays] = useState<number>(REGIONAL_SOLAR_CONSTANTS.DEFAULT_AUTONOMY_DAYS);
   const [systemVoltage, setSystemVoltage] = useState<number>(REGIONAL_SOLAR_CONSTANTS.DEFAULT_SYSTEM_VOLTAGE);
   const [safetyMargin, setSafetyMargin] = useState<number>(REGIONAL_SOLAR_CONSTANTS.DEFAULT_SAFETY_MARGIN);
@@ -131,24 +150,20 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
   const [appliedSuccess, setAppliedSuccess] = useState(false);
   const [selectedSimHour, setSelectedSimHour] = useState<number>(12); // Default 12:00
   const [isPlayingSim, setIsPlayingSim] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'me_schedule' | 'ems_simulator' | 'profile_chart'>('me_schedule');
+  const [activeTab, setActiveTab] = useState<'me_schedule' | 'load_shedding' | 'ems_simulator' | 'profile_chart'>('me_schedule');
 
-  // EMS Simulation 24h Playback animation loop
-  useEffect(() => {
-    let interval: any;
-    if (isPlayingSim) {
-      interval = setInterval(() => {
-        setSelectedSimHour((prev) => (prev + 1) % 24);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isPlayingSim]);
+  // Load Shedding Advisor Interactive States
+  const [sheddingThresholdSoc, setSheddingThresholdSoc] = useState<number>(30); // Default 30% SoC threshold
+  const [testBatterySoc, setTestBatterySoc] = useState<number>(25); // Simulated test SoC (e.g. 25%)
+  const [manualSheddedIds, setManualSheddedIds] = useState<string[]>(['1', '5']); // Default shed heavy loads
 
-  // Combine parameters for debouncing
-  const rawCalculationParams = useMemo(
-    () => ({
+  // Grid Electricity Tariff & MMK Exchange Rate States
+  const [gridTariffUsd, setGridTariffUsd] = useState<number>(0.14); // $0.14 / kWh commercial rate
+  const [mmkExchangeRate, setMmkExchangeRate] = useState<number>(3500); // 3,500 MMK / USD
+
+  // Perform full calculation memoized
+  const calculatedResults: SolarSizingResult = useMemo(() => {
+    return calculateSolarSizing({
       loadItems,
       peakSunHours,
       inverterEfficiency,
@@ -156,77 +171,347 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
       autonomyDays,
       systemVoltage,
       safetyMargin,
-    }),
-    [loadItems, peakSunHours, inverterEfficiency, batteryDod, autonomyDays, systemVoltage, safetyMargin]
-  );
+    });
+  }, [
+    loadItems,
+    peakSunHours,
+    inverterEfficiency,
+    batteryDod,
+    autonomyDays,
+    systemVoltage,
+    safetyMargin,
+  ]);
 
-  // DEBOUNCE RECALCULATION ENGINE (150ms delay)
-  const debouncedParams = useDebounceValue(rawCalculationParams, 150);
+  // Usable Battery Capacity calculation: Total kWh * DoD (default 80%)
+  const totalBatteryKwh = calculatedResults.recommendedBatteryKwh;
+  const usableBatteryKwh = Math.round(totalBatteryKwh * (batteryDod / 100) * 10) / 10;
 
-  // Calculating state indicator check
-  const isCalculating = rawCalculationParams !== debouncedParams;
+  // Calculate Grid Energy Financial Savings (USD & MMK)
+  const financialSavings = useMemo(() => {
+    const dailySolarGenKwh = calculatedResults.emsSimulation.totalDailySolarKwh;
+    const dailyGridImportKwh = calculatedResults.emsSimulation.totalDailyGridImportKwh;
+    const dailyTotalLoadKwh = calculatedResults.emsSimulation.totalDailyLoadKwh;
 
-  // Debounced Sizing Calculations via solarData M&E engine
-  const calculatedResults = useMemo(() => {
-    return calculateSolarSizing(debouncedParams);
-  }, [debouncedParams]);
+    // Grid energy replaced = daily load met by solar + battery discharging solar
+    const dailySavedKwh = Math.max(0, dailyTotalLoadKwh - dailyGridImportKwh);
 
-  // Selected hour simulation step data
-  const currentSimStep = useMemo(() => {
-    const profile = calculatedResults.emsSimulation.hourlyProfile;
-    return profile.find((p) => p.hour === selectedSimHour) || profile[0];
-  }, [calculatedResults, selectedSimHour]);
+    const dailySavedUsd = dailySavedKwh * gridTariffUsd;
+    const monthlySavedUsd = dailySavedUsd * 30;
+    const annualSavedUsd = dailySavedUsd * 365;
 
-  // Handler functions
+    const dailySavedMmk = dailySavedUsd * mmkExchangeRate;
+    const monthlySavedMmk = monthlySavedUsd * mmkExchangeRate;
+    const annualSavedMmk = annualSavedUsd * mmkExchangeRate;
+
+    return {
+      dailySavedKwh: Math.round(dailySavedKwh * 10) / 10,
+      dailySolarGenKwh,
+      selfConsumptionRatio: calculatedResults.emsSimulation.solarSelfConsumptionRatio,
+      dayShiftSelfConsumptionRatio: calculatedResults.emsSimulation.dayShiftSelfConsumptionRatio,
+      dayShiftSolarCoverageRatio: calculatedResults.emsSimulation.dayShiftSolarCoverageRatio,
+      dailySavedUsd: Math.round(dailySavedUsd * 100) / 100,
+      monthlySavedUsd: Math.round(monthlySavedUsd * 10) / 10,
+      annualSavedUsd: Math.round(annualSavedUsd),
+      dailySavedMmk: Math.round(dailySavedMmk),
+      monthlySavedMmk: Math.round(monthlySavedMmk),
+      annualSavedMmk: Math.round(annualSavedMmk),
+    };
+  }, [calculatedResults, gridTariffUsd, mmkExchangeRate]);
+
+  // 24-Hour Profile Chart Data with Solar Surplus & Deficit Area calculations
+  const chartProfileData = useMemo(() => {
+    return calculatedResults.emsSimulation.hourlyProfile.map((pt) => {
+      const surplusKw = Math.max(0, pt.solarKw - pt.loadKw);
+      const deficitKw = Math.max(0, pt.loadKw - pt.solarKw);
+      return {
+        ...pt,
+        solarSurplusKw: Math.round(surplusKw * 100) / 100,
+        deficitKw: Math.round(deficitKw * 100) / 100,
+      };
+    });
+  }, [calculatedResults.emsSimulation.hourlyProfile]);
+
+  // 24h Playback simulation loop
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlayingSim) {
+      interval = setInterval(() => {
+        setSelectedSimHour((prev) => (prev + 1) % 24);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlayingSim]);
+
+  const currentSimStep = calculatedResults.emsSimulation.hourlyProfile[selectedSimHour] || {
+    hour: 12,
+    timeLabel: '12:00',
+    loadKw: 0,
+    solarKw: 0,
+    batteryKw: 0,
+    gridKw: 0,
+    socPercent: 50,
+    stage: 'Solar',
+    solarToLoadKw: 0,
+    solarToBatteryKw: 0,
+  };
+
+  // Real-time Solar Utilization Efficiency at selected hour
+  const realTimeSolarUtilization = currentSimStep.solarKw > 0
+    ? Math.min(100, Math.round(((currentSimStep.solarToLoadKw + currentSimStep.solarToBatteryKw) / currentSimStep.solarKw) * 100))
+    : 0;
+
+  // Priority Level Active Power Calculations
+  const priorityBreakdown = useMemo(() => {
+    let p1Kw = 0;
+    let p2Kw = 0;
+    let p3Kw = 0;
+
+    let p1Kwh = 0;
+    let p2Kwh = 0;
+    let p3Kwh = 0;
+
+    loadItems.forEach((item) => {
+      const qty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      const watts = Math.max(0, Number(item.watts) || 0);
+      const df = Math.max(0.1, Math.min(1.0, Number(item.diversityFactor) || 0.80));
+      const hrs = Math.max(0, Number(item.hoursPerDay) || 0);
+      const activeKw = (qty * watts * df) / 1000;
+      const dailyKwh = activeKw * hrs;
+
+      const priority = item.priorityLevel || 'Priority 2 (Standard Production)';
+
+      if (priority === 'Priority 1 (Critical)') {
+        p1Kw += activeKw;
+        p1Kwh += dailyKwh;
+      } else if (priority === 'Priority 2 (Standard Production)') {
+        p2Kw += activeKw;
+        p2Kwh += dailyKwh;
+      } else {
+        p3Kw += activeKw;
+        p3Kwh += dailyKwh;
+      }
+    });
+
+    const totalKw = p1Kw + p2Kw + p3Kw || 1;
+
+    return {
+      p1Kw: Math.round(p1Kw * 100) / 100,
+      p2Kw: Math.round(p2Kw * 100) / 100,
+      p3Kw: Math.round(p3Kw * 100) / 100,
+      p1Kwh: Math.round(p1Kwh * 10) / 10,
+      p2Kwh: Math.round(p2Kwh * 10) / 10,
+      p3Kwh: Math.round(p3Kwh * 10) / 10,
+      p1Pct: Math.round((p1Kw / totalKw) * 100),
+      p2Pct: Math.round((p2Kw / totalKw) * 100),
+      p3Pct: Math.round((p3Kw / totalKw) * 100),
+    };
+  }, [loadItems]);
+
+  // Load Shedding Advisor Active Calculations based on manual toggle states
+  const sheddedLoadImpact = useMemo(() => {
+    let sheddedKw = 0;
+    let sheddedKwh = 0;
+
+    loadItems.forEach((item) => {
+      if (manualSheddedIds.includes(item.id)) {
+        const qty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+        const watts = Math.max(0, Number(item.watts) || 0);
+        const df = Math.max(0.1, Math.min(1.0, Number(item.diversityFactor) || 0.80));
+        const hrs = Math.max(0, Number(item.hoursPerDay) || 0);
+        const activeKw = (qty * watts * df) / 1000;
+        sheddedKw += activeKw;
+        sheddedKwh += activeKw * hrs;
+      }
+    });
+
+    const fullLoadKw = calculatedResults.totalConnectedKw || 1;
+    const loadAfterShedKw = Math.max(0, fullLoadKw - sheddedKw);
+
+    // Battery Autonomy hours for Critical P1 loads alone
+    const p1OnlyKw = priorityBreakdown.p1Kw || 1;
+    const fullAutonomyHours = Math.round((usableBatteryKwh / fullLoadKw) * 10) / 10;
+    const criticalOnlyAutonomyHours = Math.round((usableBatteryKwh / p1OnlyKw) * 10) / 10;
+    const activeAutonomyHours = Math.round((usableBatteryKwh / (loadAfterShedKw || 1)) * 10) / 10;
+
+    return {
+      sheddedKw: Math.round(sheddedKw * 100) / 100,
+      sheddedKwh: Math.round(sheddedKwh * 10) / 10,
+      loadAfterShedKw: Math.round(loadAfterShedKw * 100) / 100,
+      fullAutonomyHours,
+      criticalOnlyAutonomyHours,
+      activeAutonomyHours,
+      hoursGained: Math.max(0, Math.round((activeAutonomyHours - fullAutonomyHours) * 10) / 10),
+    };
+  }, [loadItems, manualSheddedIds, calculatedResults.totalConnectedKw, usableBatteryKwh, priorityBreakdown.p1Kw]);
+
+  // Handlers
   const handleAddLoad = () => {
     const newItem: LoadItem = {
       id: Date.now().toString(),
-      name: 'New M&E Load Circuit',
+      name: 'New Factory Circuit Load',
       category: 'Essential',
+      priorityLevel: 'Priority 2 (Standard Production)',
       quantity: 1,
-      watts: 1000,
-      hoursPerDay: 6,
+      watts: 5000,
+      hoursPerDay: 9,
       surgeFactor: 1.5,
       powerFactor: 0.85,
       diversityFactor: 0.80,
+      operationalSchedule: 'Day Shift (08:00 - 17:00)',
     };
     setLoadItems([...loadItems, newItem]);
   };
 
   const handleUpdateLoad = (id: string, updates: Partial<LoadItem>) => {
     setLoadItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, ...updates };
+
+        // Auto-sync category and priority level defaults if category changes
+        if (updates.category) {
+          if (updates.category === 'Critical') {
+            updated.priorityLevel = 'Priority 1 (Critical)';
+          } else if (updates.category === 'Essential') {
+            updated.priorityLevel = 'Priority 2 (Standard Production)';
+          } else if (updates.category === 'Non-Essential') {
+            updated.priorityLevel = 'Priority 3 (Heavy Non-Essential)';
+          }
+        }
+
+        if (updates.operationalSchedule) {
+          if (updates.operationalSchedule === 'Day Shift (08:00 - 17:00)') {
+            updated.hoursPerDay = 9;
+          } else if (updates.operationalSchedule === 'Night Shift (17:00 - 01:00)') {
+            updated.hoursPerDay = 8;
+          } else if (updates.operationalSchedule === '24/7 Continuous') {
+            updated.hoursPerDay = 24;
+          }
+        }
+        return updated;
+      })
     );
   };
 
   const handleDeleteLoad = (id: string) => {
-    setLoadItems((prev) => prev.filter((item) => item.id !== id));
+    setLoadItems(loadItems.filter((item) => item.id !== id));
   };
 
   const handleResetDefaults = () => {
     setLoadItems(DEFAULT_LOAD_ITEMS);
-    setPeakSunHours(4.8);
-    setInverterEfficiency(95);
-    setBatteryDod(80);
-    setAutonomyDays(1.5);
-    setSafetyMargin(20);
-    setSelectedSimHour(12);
+    setPeakSunHours(REGIONAL_SOLAR_CONSTANTS.DEFAULT_PEAK_SUN_HOURS);
+    setInverterEfficiency(REGIONAL_SOLAR_CONSTANTS.DEFAULT_INVERTER_EFFICIENCY);
+    setBatteryDod(REGIONAL_SOLAR_CONSTANTS.DEFAULT_BATTERY_DOD);
+    setAutonomyDays(REGIONAL_SOLAR_CONSTANTS.DEFAULT_AUTONOMY_DAYS);
+    setSystemVoltage(REGIONAL_SOLAR_CONSTANTS.DEFAULT_SYSTEM_VOLTAGE);
+    setSafetyMargin(REGIONAL_SOLAR_CONSTANTS.DEFAULT_SAFETY_MARGIN);
+    setSheddingThresholdSoc(30);
+    setTestBatterySoc(25);
+    setManualSheddedIds(['1', '5']);
   };
 
-  const handleApplyToDiagram = () => {
-    if (onApplySizingToDiagram) {
-      onApplySizingToDiagram({
-        recommendedPvKw: calculatedResults.recommendedPvKw,
-        recommendedBatteryKwh: calculatedResults.recommendedBatteryKwh,
-        recommendedInverterKw: calculatedResults.recommendedInverterKw,
-      });
-      setAppliedSuccess(true);
-      setTimeout(() => setAppliedSuccess(false), 3000);
+  const toggleShedItem = (id: string) => {
+    if (manualSheddedIds.includes(id)) {
+      setManualSheddedIds(manualSheddedIds.filter((item) => item !== id));
+    } else {
+      setManualSheddedIds([...manualSheddedIds, id]);
     }
   };
 
+  // Helper to render Gauge SVG
+  const renderGaugeArc = (valuePercent: number, labelTitle: string) => {
+    const pct = Math.max(0, Math.min(100, valuePercent));
+    const needleAngle = -90 + (pct / 100) * 180;
+
+    let badgeColor = 'bg-sky-100 text-sky-800 border-sky-300';
+    let statusText = 'MODERATE SOLAR DEMAND';
+
+    if (pct >= 80) {
+      badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      statusText = 'HIGH OPTIMAL UTILIZATION';
+    } else if (pct >= 50) {
+      badgeColor = 'bg-amber-100 text-amber-800 border-amber-300';
+      statusText = 'BALANCED SELF-CONSUMPTION';
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-[#cbd5e1] shadow-xs">
+        <span className="text-[10px] font-bold text-[#525666] uppercase tracking-wider mb-1">
+          {labelTitle}
+        </span>
+        <div className="relative w-44 h-24 flex items-center justify-center overflow-visible">
+          <svg className="w-44 h-24 overflow-visible" viewBox="0 0 200 110">
+            {/* Background Arc */}
+            <path
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke="#e2e8f0"
+              strokeWidth="16"
+              strokeLinecap="round"
+            />
+            {/* 0-50% Segment Sky Blue */}
+            <path
+              d="M 20 100 A 80 80 0 0 1 100 20"
+              fill="none"
+              stroke="#0284c7"
+              strokeWidth="16"
+              strokeOpacity="0.35"
+            />
+            {/* 50-80% Segment Amber */}
+            <path
+              d="M 100 20 A 80 80 0 0 1 164.8 48.8"
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth="16"
+              strokeOpacity="0.35"
+            />
+            {/* 80-100% Segment Emerald */}
+            <path
+              d="M 164.8 48.8 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="16"
+              strokeOpacity="0.35"
+            />
+            {/* Active Progress Arc */}
+            <path
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke={pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#0284c7'}
+              strokeWidth="16"
+              strokeDasharray="251.2"
+              strokeDashoffset={251.2 - (251.2 * pct) / 100}
+              strokeLinecap="round"
+              className="transition-all duration-500 ease-out"
+            />
+            {/* Center Pin */}
+            <circle cx="100" cy="100" r="7" fill="#0f172a" />
+            {/* Needle Line */}
+            <g transform={`rotate(${needleAngle}, 100, 100)`}>
+              <line
+                x1="100"
+                y1="100"
+                x2="100"
+                y2="32"
+                stroke="#0f172a"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+            </g>
+          </svg>
+          <div className="absolute bottom-0 text-center">
+            <span className="text-xl font-black font-mono text-[#0f172a]">{pct}%</span>
+          </div>
+        </div>
+        <span className={`mt-2 text-[9px] font-black px-2 py-0.5 rounded border ${badgeColor}`}>
+          {statusText}
+        </span>
+      </div>
+    );
+  };
+
   return (
-    <article className="bg-[#ffffff] border border-[#c3c6d6] rounded-xl shadow-lg p-5 sm:p-6 max-w-6xl mx-auto space-y-6 text-[#181c1f]" aria-label="M&E Industrial Solar Load & EMS Simulator">
+    <div className="bg-white rounded-2xl shadow-xl border border-[#c3c6d6] p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header Banner */}
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-[#ebeef2]">
         <div className="flex items-center gap-3">
@@ -236,15 +521,15 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold text-[#181c1f]">
-                M&amp;E Solar Electrical Load &amp; EMS Priority Simulator
+                Factory Solar Plant Specs &amp; M&amp;E Load Calculator
               </h2>
-              <span className="bg-[#e0e7ff] text-[#003d9b] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <Cpu className="w-3 h-3" />
-                M&amp;E Standard &amp; EMS 3-Stage Logic
+              <span className="bg-[#e0e7ff] text-[#003d9b] text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-[#c7d2fe]">
+                <Factory className="w-3 h-3" />
+                Solis Hybrid System (124.8 kWp PV Capacity)
               </span>
             </div>
             <p className="text-xs text-[#434654] mt-0.5">
-              Computes Active ($kW$), Reactive ($kVAR$), Apparent Power ($kVA$), Power Factor, and simulates Solar $\rightarrow$ Battery $\rightarrow$ Grid energy flow over 24 hours.
+              Optimized for 08:00 - 17:00 Day Shift Factory Load self-consumption ratio and Solis S6 110kW Industrial Hybrid Inverter specs.
             </p>
           </div>
         </div>
@@ -252,10 +537,10 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleResetDefaults}
-            className="px-3 py-1.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#434654] text-xs font-semibold rounded flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 bg-[#f1f4f8] hover:bg-[#e0e3e7] text-[#434654] text-xs font-semibold rounded flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Defaults</span>
+            <span>Reset Factory Specs</span>
           </button>
         </div>
       </header>
@@ -264,31 +549,43 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
       <nav className="flex items-center gap-1 border-b border-[#cbd5e1] pb-1 overflow-x-auto" aria-label="Calculator Views">
         <button
           onClick={() => setActiveTab('me_schedule')}
-          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'me_schedule'
               ? 'bg-[#003d9b] text-white shadow-xs'
               : 'text-[#434654] hover:bg-[#f1f4f8]'
           }`}
         >
           <Zap className="w-3.5 h-3.5" />
-          <span>M&amp;E Electrical Load Schedule</span>
+          <span>M&amp;E Load Schedule &amp; Shift Timings</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('load_shedding')}
+          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'load_shedding'
+              ? 'bg-[#003d9b] text-white shadow-xs'
+              : 'text-[#434654] hover:bg-[#f1f4f8]'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5 text-rose-300" />
+          <span>Load Shedding Advisor &amp; Priority Rules</span>
         </button>
 
         <button
           onClick={() => setActiveTab('ems_simulator')}
-          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'ems_simulator'
               ? 'bg-[#003d9b] text-white shadow-xs'
               : 'text-[#434654] hover:bg-[#f1f4f8]'
           }`}
         >
           <Activity className="w-3.5 h-3.5 text-amber-300" />
-          <span>3-Stage EMS Flow Simulator</span>
+          <span>3-Stage EMS &amp; Solar Gauge Indicator</span>
         </button>
 
         <button
           onClick={() => setActiveTab('profile_chart')}
-          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+          className={`px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'profile_chart'
               ? 'bg-[#003d9b] text-white shadow-xs'
               : 'text-[#434654] hover:bg-[#f1f4f8]'
@@ -299,8 +596,9 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
         </button>
       </nav>
 
-      {/* M&E Industrial Summary Cards (Active, Reactive, Apparent Power, System Power Factor) */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#f8fafc] p-3.5 rounded-xl border border-[#c3c6d6]" aria-label="M&E Industrial Calculation Metrics">
+      {/* Factory Solar Plant Metrics & Battery Usable Capacity Summary */}
+      <section className="grid grid-cols-1 lg:grid-cols-5 gap-3 bg-[#f8fafc] p-3.5 rounded-xl border border-[#c3c6d6]" aria-label="Factory Solar Plant Calculation Metrics">
+        {/* Metric 1: Coincident Active Power */}
         <div className="bg-white p-3 rounded-lg border border-[#e2e8f0]">
           <span className="text-[10px] font-bold text-[#525666] uppercase block">Coincident Active Power ($kW$)</span>
           <div className="text-lg font-black text-[#003d9b] font-mono mt-0.5">
@@ -311,67 +609,89 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
           </span>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border border-[#e2e8f0]">
-          <span className="text-[10px] font-bold text-[#525666] uppercase block">Apparent Power ($kVA$)</span>
-          <div className="text-lg font-black text-indigo-700 font-mono mt-0.5">
-            {calculatedResults.totalApparentKva.toFixed(2)} <span className="text-xs font-semibold text-[#525666]">kVA</span>
+        {/* Metric 2: Battery Storage Capacity & Usable kWh (Total kWh * DoD 80%) */}
+        <div className="bg-white p-3 rounded-lg border border-emerald-200">
+          <span className="text-[10px] font-bold text-emerald-800 uppercase block flex items-center gap-1">
+            <Battery className="w-3 h-3 text-emerald-600" />
+            Usable Battery Energy ({batteryDod}% DoD)
+          </span>
+          <div className="text-lg font-black text-emerald-900 font-mono mt-0.5">
+            {usableBatteryKwh} <span className="text-xs font-semibold text-emerald-700">kWh</span>
           </div>
-          <span className="text-[10px] text-[#64748b] block mt-0.5">
-            Transformer &amp; Inverter Demand
+          <span className="text-[10px] text-emerald-700 block mt-0.5 font-medium">
+            Nameplate Rating: {totalBatteryKwh} kWh
           </span>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border border-[#e2e8f0]">
-          <span className="text-[10px] font-bold text-[#525666] uppercase block">Reactive Power ($kVAR$)</span>
-          <div className="text-lg font-black text-amber-700 font-mono mt-0.5">
-            {calculatedResults.totalReactiveKvar.toFixed(2)} <span className="text-xs font-semibold text-[#525666]">kVAR</span>
+        {/* Metric 3: Day Shift (08:00 - 17:00) Solar Self-Consumption Ratio */}
+        <div className="bg-white p-3 rounded-lg border border-amber-200">
+          <span className="text-[10px] font-bold text-amber-800 uppercase block flex items-center gap-1">
+            <Clock className="w-3 h-3 text-amber-600" />
+            Day Shift (08:00-17:00) Self-Consumption
+          </span>
+          <div className="text-lg font-black text-amber-900 font-mono mt-0.5">
+            {calculatedResults.emsSimulation.dayShiftSelfConsumptionRatio}%
           </div>
-          <span className="text-[10px] text-[#64748b] block mt-0.5">
-            Inductive Load Compensation
+          <span className="text-[10px] text-amber-700 block mt-0.5">
+            PV: {calculatedResults.emsSimulation.dayShiftSolarGeneratedKwh} kWh | Load: {calculatedResults.emsSimulation.dayShiftFactoryLoadKwh} kWh
           </span>
         </div>
 
+        {/* Metric 4: Daytime Solar Coverage */}
+        <div className="bg-white p-3 rounded-lg border border-indigo-200">
+          <span className="text-[10px] font-bold text-indigo-800 uppercase block flex items-center gap-1">
+            <Sun className="w-3 h-3 text-indigo-600" />
+            Daytime Solar Coverage
+          </span>
+          <div className="text-lg font-black text-indigo-900 font-mono mt-0.5">
+            {calculatedResults.emsSimulation.dayShiftSolarCoverageRatio}%
+          </div>
+          <span className="text-[10px] text-indigo-700 block mt-0.5">
+            Factory Grid Independence
+          </span>
+        </div>
+
+        {/* Metric 5: System Power Factor */}
         <div className="bg-white p-3 rounded-lg border border-[#e2e8f0]">
           <span className="text-[10px] font-bold text-[#525666] uppercase block">System Power Factor ($PF$)</span>
-          <div className="text-lg font-black text-emerald-700 font-mono mt-0.5 flex items-center gap-1">
+          <div className="text-lg font-black text-indigo-700 font-mono mt-0.5 flex items-center gap-1">
             <span>{calculatedResults.systemPowerFactor.toFixed(2)}</span>
-            <span
-              className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                calculatedResults.systemPowerFactor >= 0.85
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              {calculatedResults.systemPowerFactor >= 0.85 ? 'Good' : 'Low PF'}
+            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800">
+              {calculatedResults.totalApparentKva.toFixed(1)} kVA
             </span>
           </div>
           <span className="text-[10px] text-[#64748b] block mt-0.5">
-            Weighted $\cos(\phi)$ Ratio
+            Apparent Power Demand
           </span>
         </div>
       </section>
 
-      {/* Category Distribution Badges */}
+      {/* Priority Level Breakdown Badges */}
       <div className="flex items-center gap-2 flex-wrap text-xs bg-[#f1f5f9] p-2.5 rounded-lg border border-[#cbd5e1]">
         <span className="font-bold text-[#1e293b] uppercase text-[10px] tracking-wider mr-1">
-          Load Category Breakdown:
+          M&amp;E Load Priority Levels:
         </span>
-        {calculatedResults.categoryBreakdown.map((cat) => (
-          <div
-            key={cat.category}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1.5 border ${
-              cat.category === 'Critical'
-                ? 'bg-rose-50 border-rose-200 text-rose-800'
-                : cat.category === 'Essential'
-                ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
-                : 'bg-slate-100 border-slate-300 text-slate-800'
-            }`}
-          >
-            <span>{cat.category}:</span>
-            <span className="font-mono">{cat.activeKw} kW</span>
-            <span className="text-[10px] opacity-75">({cat.apparentKva} kVA | {cat.percentageOfTotal}%)</span>
-          </div>
-        ))}
+
+        <div className="px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1.5 border bg-rose-50 border-rose-200 text-rose-800">
+          <ShieldAlert className="w-3 h-3 text-rose-600" />
+          <span>Priority 1 (Critical):</span>
+          <span className="font-mono">{priorityBreakdown.p1Kw} kW</span>
+          <span className="text-[10px] opacity-75">({priorityBreakdown.p1Pct}%)</span>
+        </div>
+
+        <div className="px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1.5 border bg-amber-50 border-amber-200 text-amber-800">
+          <Zap className="w-3 h-3 text-amber-600" />
+          <span>Priority 2 (Standard Production):</span>
+          <span className="font-mono">{priorityBreakdown.p2Kw} kW</span>
+          <span className="text-[10px] opacity-75">({priorityBreakdown.p2Pct}%)</span>
+        </div>
+
+        <div className="px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1.5 border bg-slate-100 border-slate-300 text-slate-800">
+          <Power className="w-3 h-3 text-slate-600" />
+          <span>Priority 3 (Heavy Non-Essential):</span>
+          <span className="font-mono">{priorityBreakdown.p3Kw} kW</span>
+          <span className="text-[10px] opacity-75">({priorityBreakdown.p3Pct}%)</span>
+        </div>
       </div>
 
       {/* TAB 1: M&E ELECTRICAL LOAD SCHEDULE */}
@@ -382,14 +702,15 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#003d9b] flex items-center gap-1.5">
                 <Zap className="w-4 h-4" />
-                M&amp;E Industrial Electrical Load Schedule
+                Factory Equipment, Priority Classification &amp; Schedules
               </h3>
               <button
+                type="button"
                 onClick={handleAddLoad}
-                className="px-3 py-1 bg-[#003d9b] hover:bg-[#0052cc] text-white text-xs font-bold rounded flex items-center gap-1 shadow-2xs transition-colors"
+                className="px-2.5 py-1 bg-[#003d9b] hover:bg-[#0052cc] text-white text-xs font-bold rounded flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add M&amp;E Load</span>
+                <span>Add Equipment Load</span>
               </button>
             </div>
 
@@ -398,15 +719,15 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[#e2e8f0] text-[#1e293b] font-bold uppercase text-[10px] tracking-wider border-b border-[#cbd5e1]">
                     <tr>
-                      <th className="p-2.5">Appliance / Load</th>
-                      <th className="p-2.5 w-28">Category</th>
-                      <th className="p-2.5 w-16 text-center">Qty</th>
-                      <th className="p-2.5 w-20">Watts</th>
-                      <th className="p-2.5 w-20" title="Diversity Factor (0.1 - 1.0)">Div (DF)</th>
-                      <th className="p-2.5 w-20" title="Power Factor (0.4 - 1.0)">PF ($\cos\phi$)</th>
-                      <th className="p-2.5 w-16">Hrs/Day</th>
+                      <th className="p-2.5">Equipment Load</th>
+                      <th className="p-2.5 w-32">Priority Level</th>
+                      <th className="p-2.5 w-36">Operational Schedule</th>
+                      <th className="p-2.5 w-14 text-center">Qty</th>
+                      <th className="p-2.5 w-18">Watts</th>
+                      <th className="p-2.5 w-16" title="Diversity Factor (0.1 - 1.0)">Div (DF)</th>
+                      <th className="p-2.5 w-16" title="Power Factor (0.4 - 1.0)">PF ($\cos\phi$)</th>
+                      <th className="p-2.5 w-14">Hrs</th>
                       <th className="p-2.5 w-20">Active kW</th>
-                      <th className="p-2.5 w-20">Apparent kVA</th>
                       <th className="p-2.5 w-10 text-center">
                         <span className="sr-only">Actions</span>
                       </th>
@@ -417,39 +738,60 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
                       const qty = item.quantity || 1;
                       const watts = item.watts || 0;
                       const df = item.diversityFactor || 0.8;
-                      const pf = item.powerFactor || 0.85;
                       const activeKw = (qty * watts * df) / 1000;
-                      const apparentKva = pf > 0 ? activeKw / pf : activeKw;
+                      const priority = item.priorityLevel || 'Priority 2 (Standard Production)';
 
                       return (
                         <tr key={item.id} className="hover:bg-[#f1f5f9] transition-colors">
                           <td className="p-2">
-                            <label htmlFor={`load-name-${item.id}`} className="sr-only">
-                              Appliance name for load {item.id}
-                            </label>
                             <input
-                              id={`load-name-${item.id}`}
                               type="text"
                               value={item.name}
-                              aria-label={`Appliance or circuit name for load ${item.id}`}
+                              aria-label={`Equipment name for load ${item.id}`}
                               onChange={(e) => handleUpdateLoad(item.id, { name: e.target.value })}
                               className="w-full bg-white border border-[#cbd5e1] rounded px-2 py-1 text-xs font-semibold text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
                             />
                           </td>
 
-                          {/* Category Dropdown */}
+                          {/* Priority Level Dropdown */}
                           <td className="p-2">
                             <select
-                              value={item.category}
-                              aria-label={`Load category for ${item.name}`}
+                              value={priority}
+                              aria-label={`Priority level for ${item.name}`}
                               onChange={(e) =>
-                                handleUpdateLoad(item.id, { category: e.target.value as LoadCategory })
+                                handleUpdateLoad(item.id, {
+                                  priorityLevel: e.target.value as LoadPriority,
+                                })
                               }
-                              className="w-full bg-white border border-[#cbd5e1] rounded px-1.5 py-1 text-[11px] font-bold text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                              className={`w-full border rounded px-1.5 py-1 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-[#003d9b] ${
+                                priority.includes('Priority 1')
+                                  ? 'bg-rose-50 border-rose-300 text-rose-800'
+                                  : priority.includes('Priority 2')
+                                  ? 'bg-amber-50 border-amber-300 text-amber-800'
+                                  : 'bg-slate-100 border-slate-300 text-slate-800'
+                              }`}
                             >
-                              <option value="Critical">Critical</option>
-                              <option value="Essential">Essential</option>
-                              <option value="Non-Essential">Non-Essential</option>
+                              <option value="Priority 1 (Critical)">Priority 1 (Critical)</option>
+                              <option value="Priority 2 (Standard Production)">Priority 2 (Production)</option>
+                              <option value="Priority 3 (Heavy Non-Essential)">Priority 3 (Heavy)</option>
+                            </select>
+                          </td>
+
+                          {/* Operational Schedule Dropdown */}
+                          <td className="p-2">
+                            <select
+                              value={item.operationalSchedule || '24/7 Continuous'}
+                              aria-label={`Operational schedule for ${item.name}`}
+                              onChange={(e) =>
+                                handleUpdateLoad(item.id, {
+                                  operationalSchedule: e.target.value as OperationalSchedule,
+                                })
+                              }
+                              className="w-full bg-white border border-[#cbd5e1] rounded px-1.5 py-1 text-[10px] font-bold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
+                            >
+                              <option value="Day Shift (08:00 - 17:00)">Day Shift (08:00 - 17:00)</option>
+                              <option value="Night Shift (17:00 - 01:00)">Night Shift (17:00 - 01:00)</option>
+                              <option value="24/7 Continuous">24/7 Continuous</option>
                             </select>
                           </td>
 
@@ -471,7 +813,7 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
                             <input
                               type="number"
                               min="1"
-                              step="10"
+                              step="100"
                               value={item.watts}
                               aria-label={`Watts rating for ${item.name}`}
                               onChange={(e) =>
@@ -517,36 +859,19 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
                             />
                           </td>
 
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              min="0.1"
-                              max="24"
-                              step="0.5"
-                              value={item.hoursPerDay}
-                              aria-label={`Operating hours for ${item.name}`}
-                              onChange={(e) =>
-                                handleUpdateLoad(item.id, {
-                                  hoursPerDay: Math.min(24, Math.max(0.1, parseFloat(e.target.value) || 0.1)),
-                                })
-                              }
-                              className="w-full bg-white border border-[#cbd5e1] rounded px-1 py-1 text-xs font-mono text-[#1e293b] font-bold text-center focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
-                            />
+                          <td className="p-2 font-mono font-bold text-slate-700 text-center">
+                            {item.hoursPerDay}h
                           </td>
 
                           <td className="p-2 font-mono font-bold text-[#003d9b]">
                             {activeKw.toFixed(2)} kW
                           </td>
 
-                          <td className="p-2 font-mono font-bold text-indigo-700">
-                            {apparentKva.toFixed(2)} kVA
-                          </td>
-
                           <td className="p-2 text-center">
                             <button
                               type="button"
                               onClick={() => handleDeleteLoad(item.id)}
-                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 transition-colors"
+                              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 transition-colors cursor-pointer"
                               title={`Remove ${item.name}`}
                               aria-label={`Remove circuit load ${item.name}`}
                             >
@@ -562,14 +887,49 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Site & Environment Sliders */}
+          {/* Right Column: Battery DoD & Site Parameters */}
           <div className="space-y-4 bg-[#f8fafc] p-4 rounded-lg border border-[#c3c6d6]">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#003d9b] flex items-center gap-1.5">
               <Sliders className="w-4 h-4" />
-              Solar &amp; System Environmental Factors
+              Battery DoD &amp; Solis System Parameters
             </h3>
 
+            {/* Battery Usable Storage Card */}
+            <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-lg text-xs space-y-1">
+              <span className="font-bold text-emerald-900 block flex items-center gap-1">
+                <Battery className="w-3.5 h-3.5 text-emerald-600" />
+                Battery Usable Capacity Calculation
+              </span>
+              <div className="text-sm font-black text-emerald-900 font-mono">
+                {usableBatteryKwh} kWh Usable Energy
+              </div>
+              <p className="text-[11px] text-emerald-800 leading-snug">
+                Calculated as Nameplate Capacity ({totalBatteryKwh} kWh) &times; Depth of Discharge ({batteryDod}% DoD). Reserve set to 20% Min SoC.
+              </p>
+            </div>
+
             <div className="space-y-3 text-xs">
+              {/* Battery Depth of Discharge (DoD) Slider */}
+              <div>
+                <div className="flex justify-between font-semibold text-[#1e293b]">
+                  <label htmlFor="dod-slider" className="cursor-pointer">
+                    Battery Depth of Discharge (DoD):
+                  </label>
+                  <span className="font-mono text-emerald-700 font-bold">{batteryDod}%</span>
+                </div>
+                <input
+                  id="dod-slider"
+                  type="range"
+                  min="50"
+                  max="95"
+                  step="5"
+                  value={batteryDod}
+                  aria-label="Battery Depth of Discharge percentage"
+                  onChange={(e) => setBatteryDod(parseInt(e.target.value))}
+                  className="w-full accent-emerald-600 cursor-pointer mt-1 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
               {/* Peak Sun Hours Slider */}
               <div>
                 <div className="flex justify-between font-semibold text-[#1e293b]">
@@ -616,7 +976,7 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
               <div>
                 <div className="flex justify-between font-semibold text-[#1e293b]">
                   <label htmlFor="efficiency-slider" className="cursor-pointer">
-                    Inverter Efficiency:
+                    Solis Inverter Efficiency:
                   </label>
                   <span className="font-mono text-[#003d9b] font-bold">{inverterEfficiency}%</span>
                 </div>
@@ -633,31 +993,10 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
                 />
               </div>
 
-              {/* Safety Design Margin Slider */}
-              <div>
-                <div className="flex justify-between font-semibold text-[#1e293b]">
-                  <label htmlFor="margin-slider" className="cursor-pointer">
-                    Design Growth Margin:
-                  </label>
-                  <span className="font-mono text-[#003d9b] font-bold">+{safetyMargin}%</span>
-                </div>
-                <input
-                  id="margin-slider"
-                  type="range"
-                  min="0"
-                  max="50"
-                  step="5"
-                  value={safetyMargin}
-                  aria-label="Design Growth Margin percentage"
-                  onChange={(e) => setSafetyMargin(parseInt(e.target.value))}
-                  className="w-full accent-[#003d9b] cursor-pointer mt-1 focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
-                />
-              </div>
-
               {/* System DC Voltage Select */}
               <div>
                 <label htmlFor="system-voltage-select" className="block font-semibold text-[#1e293b] mb-1">
-                  System DC Voltage Rating:
+                  System DC Bus Voltage Rating:
                 </label>
                 <select
                   id="system-voltage-select"
@@ -666,10 +1005,10 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
                   onChange={(e) => setSystemVoltage(parseInt(e.target.value))}
                   className="w-full bg-white border border-[#cbd5e1] rounded px-2.5 py-1.5 text-xs font-bold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#003d9b]"
                 >
-                  <option value={48}>48 VDC (LFP Standard Nominal)</option>
-                  <option value={51.2}>51.2 VDC (Lithium Iron Phosphate 16S)</option>
-                  <option value={120}>120 VDC High Voltage String</option>
-                  <option value={400}>400 VDC Commercial Bus</option>
+                  <option value={48}>48 VDC (LFP Low Voltage)</option>
+                  <option value={51.2}>51.2 VDC (Lithium LFP 16S)</option>
+                  <option value={120}>120 VDC High Voltage Bus</option>
+                  <option value={400}>400 VDC Commercial / Solis Bus</option>
                 </select>
               </div>
             </div>
@@ -677,7 +1016,293 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
         </div>
       )}
 
-      {/* TAB 2: 3-STAGE EMS PRIORITY FLOW SIMULATOR */}
+      {/* TAB 2: LOAD SHEDDING ADVISOR & M&E OPERATOR CONTROLS */}
+      {activeTab === 'load_shedding' && (
+        <div className="space-y-6">
+          {/* Top Alert & Advisory Banner */}
+          <div
+            className={`p-4 rounded-xl border transition-all ${
+              testBatterySoc <= 20
+                ? 'bg-rose-950 text-white border-rose-700 shadow-md'
+                : testBatterySoc <= sheddingThresholdSoc
+                ? 'bg-amber-950 text-white border-amber-600 shadow-md'
+                : 'bg-emerald-950 text-white border-emerald-600 shadow-md'
+            }`}
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    testBatterySoc <= 20
+                      ? 'bg-rose-600 text-white animate-bounce'
+                      : testBatterySoc <= sheddingThresholdSoc
+                      ? 'bg-amber-500 text-slate-950 animate-pulse'
+                      : 'bg-emerald-500 text-slate-950'
+                  }`}
+                >
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider">
+                    {testBatterySoc <= 20
+                      ? '🚨 CRITICAL EMERGENCY LOAD SHEDDING ALERT'
+                      : testBatterySoc <= sheddingThresholdSoc
+                      ? '⚠️ LOAD SHEDDING WARNING IN EFFECT'
+                      : '🟢 SYSTEM OPERATING NORMALLY'}
+                  </h3>
+                  <p className="text-xs text-slate-200 mt-0.5">
+                    {testBatterySoc <= 20
+                      ? `Battery SoC dropped to ${testBatterySoc}% (At Min SoC Reserve limit). Immediately disconnect Priority 2 & Priority 3 loads!`
+                      : testBatterySoc <= sheddingThresholdSoc
+                      ? `Battery SoC is ${testBatterySoc}% (Below ${sheddingThresholdSoc}% threshold). Disconnect Priority 3 Heavy Non-Essential loads.`
+                      : `Battery SoC is ${testBatterySoc}% (Above ${sheddingThresholdSoc}% threshold). All equipment loads permitted to operate.`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive SoC Simulator Controls */}
+              <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg border border-white/10 shrink-0">
+                <span className="text-[11px] font-bold text-slate-300">Test Battery SoC:</span>
+                <input
+                  type="range"
+                  min="15"
+                  max="100"
+                  step="5"
+                  value={testBatterySoc}
+                  onChange={(e) => setTestBatterySoc(parseInt(e.target.value))}
+                  className="w-24 accent-amber-400 cursor-pointer"
+                />
+                <span className="font-mono text-sm font-black text-amber-300 w-10 text-right">
+                  {testBatterySoc}%
+                </span>
+              </div>
+            </div>
+
+            {/* Configurable Threshold Slider Bar */}
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-3">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-300">Configurable Load Shedding Threshold:</span>
+                <input
+                  type="range"
+                  min="15"
+                  max="50"
+                  step="5"
+                  value={sheddingThresholdSoc}
+                  onChange={(e) => setSheddingThresholdSoc(parseInt(e.target.value))}
+                  className="w-28 accent-amber-400 cursor-pointer"
+                />
+                <span className="font-mono font-bold text-amber-300">{sheddingThresholdSoc}% SoC</span>
+              </div>
+
+              <div className="flex items-center gap-3 text-[11px] font-mono">
+                <span>Total Usable Storage: <strong className="text-emerald-300">{usableBatteryKwh} kWh</strong></span>
+                <span>Critical Battery Reserve: <strong className="text-rose-300">{Math.round(totalBatteryKwh * 0.2)} kWh</strong></span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Priority Level Classification Cards & M&E Shedding Toggles */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Priority 1 Card: Critical */}
+            <div className="bg-white p-4 rounded-xl border border-rose-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-rose-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded bg-rose-100 text-rose-800 flex items-center justify-center font-bold">
+                    P1
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-rose-900 uppercase">Priority 1: Critical</h4>
+                    <span className="text-[10px] text-rose-700">Must run continuously</span>
+                  </div>
+                </div>
+                <span className="font-mono text-sm font-black text-rose-800">{priorityBreakdown.p1Kw} kW</span>
+              </div>
+
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Controls, Server Room, Automation PLCs, and Essential Safety Lighting. Never shed automatically.
+              </p>
+
+              <div className="space-y-1.5 text-xs bg-rose-50/50 p-2.5 rounded border border-rose-100">
+                {loadItems
+                  .filter((item) => item.priorityLevel === 'Priority 1 (Critical)')
+                  .map((item) => (
+                    <div key={item.id} className="flex justify-between items-center text-[11px]">
+                      <span className="font-medium text-slate-800">{item.name}</span>
+                      <span className="font-mono font-bold text-rose-700">
+                        {((item.quantity * item.watts * item.diversityFactor) / 1000).toFixed(1)} kW
+                      </span>
+                    </div>
+                  ))}
+              </div>
+
+              <div className="text-[10px] text-rose-800 font-semibold bg-rose-100 px-2 py-1 rounded text-center">
+                Autonomy on Usable Battery: ~{sheddedLoadImpact.criticalOnlyAutonomyHours} Hours
+              </div>
+            </div>
+
+            {/* Priority 2 Card: Standard Production */}
+            <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-amber-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                    P2
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-900 uppercase">Priority 2: Production</h4>
+                    <span className="text-[10px] text-amber-700">Shed if SoC &lt; {sheddingThresholdSoc}%</span>
+                  </div>
+                </div>
+                <span className="font-mono text-sm font-black text-amber-800">{priorityBreakdown.p2Kw} kW</span>
+              </div>
+
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Standard assembly line CNC motors and drives. Powered by Solar + Battery; shed during prolonged outages.
+              </p>
+
+              <div className="space-y-1.5 text-xs bg-amber-50/50 p-2.5 rounded border border-amber-100">
+                {loadItems
+                  .filter((item) => item.priorityLevel === 'Priority 2 (Standard Production)')
+                  .map((item) => {
+                    const isShed = manualSheddedIds.includes(item.id);
+                    return (
+                      <div key={item.id} className="flex justify-between items-center text-[11px]">
+                        <span className={`font-medium ${isShed ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                          {item.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleShedItem(item.id)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                            isShed
+                              ? 'bg-rose-200 text-rose-800 hover:bg-rose-300'
+                              : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                          }`}
+                        >
+                          {isShed ? 'SHEDDED' : 'ONLINE'}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="text-[10px] text-amber-800 font-semibold bg-amber-100 px-2 py-1 rounded text-center">
+                Protected by Inverter Aux Contact #2
+              </div>
+            </div>
+
+            {/* Priority 3 Card: Heavy Non-Essential */}
+            <div className="bg-white p-4 rounded-xl border border-slate-300 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded bg-slate-200 text-slate-800 flex items-center justify-center font-bold">
+                    P3
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 uppercase">Priority 3: Heavy Non-Essential</h4>
+                    <span className="text-[10px] text-slate-600">Shed on Battery operation</span>
+                  </div>
+                </div>
+                <span className="font-mono text-sm font-black text-slate-800">{priorityBreakdown.p3Kw} kW</span>
+              </div>
+
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Main HVAC Chiller, compressors, and high-power night shifts. Disconnect first when running purely on Battery.
+              </p>
+
+              <div className="space-y-1.5 text-xs bg-slate-50 p-2.5 rounded border border-slate-200">
+                {loadItems
+                  .filter((item) => item.priorityLevel === 'Priority 3 (Heavy Non-Essential)')
+                  .map((item) => {
+                    const isShed = manualSheddedIds.includes(item.id);
+                    return (
+                      <div key={item.id} className="flex justify-between items-center text-[11px]">
+                        <span className={`font-medium ${isShed ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                          {item.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleShedItem(item.id)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                            isShed
+                              ? 'bg-rose-200 text-rose-800 hover:bg-rose-300'
+                              : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                          }`}
+                        >
+                          {isShed ? 'SHEDDED' : 'ONLINE'}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="text-[10px] text-slate-800 font-semibold bg-slate-200 px-2 py-1 rounded text-center">
+                Automatically Shed via Solis PLC Relay #1
+              </div>
+            </div>
+          </div>
+
+          {/* Real-time Shedding Savings & Battery Autonomy Extension Summary */}
+          <div className="bg-[#f8fafc] border border-[#c3c6d6] p-4 rounded-xl space-y-3">
+            <h4 className="text-xs font-bold text-[#003d9b] uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="w-4 h-4" />
+              Interactive Load Shedding Impact &amp; Autonomy Extension Calculator
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-white p-3 rounded-lg border border-[#cbd5e1]">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Active Shedded Power</span>
+                <span className="text-lg font-black font-mono text-rose-600">-{sheddedLoadImpact.sheddedKw} kW</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Immediate Demand Relief</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-[#cbd5e1]">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Daily Energy Saved</span>
+                <span className="text-lg font-black font-mono text-emerald-600">-{sheddedLoadImpact.sheddedKwh} kWh</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Conserved Battery Storage</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-[#cbd5e1]">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Net Operating Demand</span>
+                <span className="text-lg font-black font-mono text-[#003d9b]">{sheddedLoadImpact.loadAfterShedKw} kW</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Remaining Active Load</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-lg border border-emerald-200 bg-emerald-50/50">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase block">Extended Critical Autonomy</span>
+                <span className="text-lg font-black font-mono text-emerald-900">{sheddedLoadImpact.activeAutonomyHours} Hours</span>
+                <span className="text-[10px] font-bold text-emerald-700 block mt-0.5">
+                  +{sheddedLoadImpact.hoursGained} Hours Extra Autonomy!
+                </span>
+              </div>
+            </div>
+
+            {/* M&E Operator Action Protocol Checklist */}
+            <div className="pt-3 border-t border-[#cbd5e1] space-y-2">
+              <span className="text-[11px] font-bold text-[#1e293b] uppercase tracking-wider block">
+                Substation M&amp;E Operator Action Protocol:
+              </span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+                <div className="flex items-start gap-2 bg-white p-2.5 rounded border border-[#e2e8f0]">
+                  <span className="font-bold text-[#003d9b] bg-[#e0e7ff] px-1.5 py-0.5 rounded text-[10px]">1</span>
+                  <span><strong>Dry Contact Relay 1:</strong> Automatic trip output sent to Chiller MCCB when SoC &lt; {sheddingThresholdSoc}%.</span>
+                </div>
+
+                <div className="flex items-start gap-2 bg-white p-2.5 rounded border border-[#e2e8f0]">
+                  <span className="font-bold text-[#003d9b] bg-[#e0e7ff] px-1.5 py-0.5 rounded text-[10px]">2</span>
+                  <span><strong>Manual Isolation:</strong> Verify Sub-Panel 3 breaker status on Main Distribution Board PrismaSeT.</span>
+                </div>
+
+                <div className="flex items-start gap-2 bg-white p-2.5 rounded border border-[#e2e8f0]">
+                  <span className="font-bold text-[#003d9b] bg-[#e0e7ff] px-1.5 py-0.5 rounded text-[10px]">3</span>
+                  <span><strong>Restoration:</strong> Re-engage Priority 3 loads automatically once Solar PV generates &gt; 50kW or SoC &gt; 50%.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: 3-STAGE EMS PRIORITY FLOW SIMULATOR & SOLAR UTILIZATION GAUGE */}
       {activeTab === 'ems_simulator' && (
         <div className="space-y-6">
           {/* Priority Sequence Banner */}
@@ -686,7 +1311,7 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
               <div className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-amber-400" />
                 <h3 className="font-bold text-sm uppercase tracking-wider text-slate-100">
-                  Energy Management System (EMS) 3-Stage Priority Flow
+                  Solis Energy Management System (EMS) 3-Stage Priority Flow
                 </h3>
               </div>
               <span className="text-xs font-mono text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded border border-emerald-800">
@@ -773,7 +1398,7 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsPlayingSim(!isPlayingSim)}
-                    className="px-3 py-1.5 bg-[#003d9b] hover:bg-[#0052cc] text-white rounded flex items-center gap-1.5 shadow-sm transition-colors"
+                    className="px-3 py-1.5 bg-[#003d9b] hover:bg-[#0052cc] text-white rounded flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                   >
                     {isPlayingSim ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                     <span>{isPlayingSim ? 'Pause Simulation' : 'Play 24h Loop'}</span>
@@ -805,250 +1430,396 @@ export const SolarLoadCalculator: React.FC<SolarLoadCalculatorProps> = ({
             </div>
           </div>
 
-          {/* Real-time Power Balance Breakdown at Selected Hour */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            {/* Solar Generation */}
-            <div className="bg-[#f8fafc] border border-[#c3c6d6] p-3.5 rounded-xl text-xs space-y-1">
-              <div className="flex justify-between items-center text-[#525666] font-bold">
-                <span className="flex items-center gap-1 text-amber-700">
-                  <Sun className="w-4 h-4" /> Solar PV Output
-                </span>
-                <span className="font-mono font-bold text-amber-900">{currentSimStep.solarKw} kW</span>
-              </div>
-              <div className="text-[11px] text-[#64748b] pt-1 border-t border-[#e2e8f0] space-y-0.5">
-                <div>To Load: <strong className="font-mono text-[#181c1f]">{currentSimStep.solarToLoadKw} kW</strong></div>
-                <div>To Battery: <strong className="font-mono text-[#181c1f]">{currentSimStep.solarToBatteryKw} kW</strong></div>
-              </div>
-            </div>
+          {/* Dual Gauges & Real-time Power Balance Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Solar Utilization Efficiency Gauge 1: Day Shift Overall */}
+            {renderGaugeArc(
+              calculatedResults.emsSimulation.dayShiftSelfConsumptionRatio,
+              'Day Shift Solar Self-Consumption'
+            )}
 
-            {/* Battery Storage Action */}
-            <div className="bg-[#f8fafc] border border-[#c3c6d6] p-3.5 rounded-xl text-xs space-y-1">
-              <div className="flex justify-between items-center text-[#525666] font-bold">
-                <span className="flex items-center gap-1 text-emerald-700">
-                  <Battery className="w-4 h-4" /> Battery Action
-                </span>
-                <span
-                  className={`font-mono font-bold ${
-                    currentSimStep.batteryKw > 0
-                      ? 'text-emerald-700'
-                      : currentSimStep.batteryKw < 0
-                      ? 'text-amber-700'
-                      : 'text-slate-600'
-                  }`}
-                >
-                  {currentSimStep.batteryKw > 0
-                    ? `+${currentSimStep.batteryKw} kW (Discharge)`
-                    : currentSimStep.batteryKw < 0
-                    ? `${currentSimStep.batteryKw} kW (Charge)`
-                    : '0.0 kW (Idle)'}
-                </span>
-              </div>
-              <div className="text-[11px] text-[#64748b] pt-1 border-t border-[#e2e8f0]">
-                State of Charge (SoC):{' '}
-                <strong className="font-mono text-emerald-800 font-bold">{currentSimStep.socPercent}%</strong>
-              </div>
-            </div>
+            {/* Solar Utilization Efficiency Gauge 2: Selected Hour Real-time */}
+            {renderGaugeArc(
+              realTimeSolarUtilization,
+              `Hour ${currentSimStep.timeLabel} Real-Time Solar Efficiency`
+            )}
 
-            {/* Grid Import */}
-            <div className="bg-[#f8fafc] border border-[#c3c6d6] p-3.5 rounded-xl text-xs space-y-1">
-              <div className="flex justify-between items-center text-[#525666] font-bold">
-                <span className="flex items-center gap-1 text-sky-700">
-                  <Building2 className="w-4 h-4" /> Grid Import
+            {/* Real-time Hour Summary Stats Card */}
+            <div className="bg-[#f8fafc] border border-[#c3c6d6] p-4 rounded-xl text-xs space-y-2 flex flex-col justify-center">
+              <div className="flex justify-between items-center pb-2 border-b border-[#cbd5e1]">
+                <span className="font-bold text-[#003d9b] flex items-center gap-1">
+                  <Gauge className="w-4 h-4" /> Selected Hour Breakdown ({currentSimStep.timeLabel})
                 </span>
-                <span className="font-mono font-bold text-sky-800">{currentSimStep.gridKw} kW</span>
-              </div>
-              <div className="text-[11px] text-[#64748b] pt-1 border-t border-[#e2e8f0]">
-                Deficit Coverage:{' '}
-                <strong className="font-mono text-[#181c1f]">
-                  {currentSimStep.gridKw > 0 ? 'Active Grid Feed' : '100% Off-Grid'}
-                </strong>
-              </div>
-            </div>
-
-            {/* Total Load Demand */}
-            <div className="bg-[#f8fafc] border border-[#c3c6d6] p-3.5 rounded-xl text-xs space-y-1">
-              <div className="flex justify-between items-center text-[#525666] font-bold">
-                <span className="flex items-center gap-1 text-[#003d9b]">
-                  <Zap className="w-4 h-4" /> Total Demand
+                <span className="font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-[10px]">
+                  STAGE {currentSimStep.stage}
                 </span>
-                <span className="font-mono font-bold text-[#003d9b]">{currentSimStep.loadKw} kW</span>
               </div>
-              <div className="text-[11px] text-[#64748b] pt-1 border-t border-[#e2e8f0]">
-                Hour Stage:{' '}
-                <strong className="font-mono text-[#003d9b] uppercase">STAGE {currentSimStep.stage}</strong>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div>Solar PV Gen: <strong className="font-mono text-amber-800">{currentSimStep.solarKw} kW</strong></div>
+                <div>Factory Load: <strong className="font-mono text-[#003d9b]">{currentSimStep.loadKw} kW</strong></div>
+                <div>Solar to Load: <strong className="font-mono text-emerald-800">{currentSimStep.solarToLoadKw} kW</strong></div>
+                <div>Solar to Battery: <strong className="font-mono text-indigo-800">{currentSimStep.solarToBatteryKw} kW</strong></div>
+                <div>Battery SoC: <strong className="font-mono text-slate-800">{currentSimStep.socPercent}%</strong></div>
+                <div>Grid Import: <strong className="font-mono text-sky-800">{currentSimStep.gridKw} kW</strong></div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 3: 24-HOUR LOAD PROFILE & BATTERY SOC GRAPH */}
+      {/* TAB 4: 24-HOUR LOAD PROFILE & BATTERY SOC GRAPH */}
       {activeTab === 'profile_chart' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#003d9b] flex items-center gap-1.5">
-              <PieChartIcon className="w-4 h-4" />
-              Dynamic 24-Hour Load Profile &amp; Energy Flow Graph
-            </h3>
-            <span className="text-[11px] text-[#525666] font-mono">
-              24h Step Resolution | Dual-Axis (Power kW / Battery SoC %)
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#cbd5e1]">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#003d9b] flex items-center gap-1.5">
+                <PieChartIcon className="w-4 h-4 text-[#003d9b]" />
+                Interactive 24-Hour Solis Solar PV vs Factory Load Profile
+              </h3>
+              <p className="text-[11px] text-[#434654] mt-0.5">
+                Dual-axis simulation featuring Solis 124.8 kWp Peak Generation Curve vs M&amp;E Operational Equipment Load Schedules.
+              </p>
+            </div>
+            <span className="text-[11px] text-[#525666] font-mono bg-[#f1f5f9] px-2.5 py-1 rounded border border-[#cbd5e1] shrink-0">
+              24h Step Resolution | Peak 124.8 kW @ 12:00 PM
             </span>
           </div>
 
-          <div className="bg-[#f8fafc] p-4 rounded-xl border border-[#c3c6d6] h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={calculatedResults.emsSimulation.hourlyProfile}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
-                <XAxis dataKey="timeLabel" stroke="#475569" fontSize={11} tickLine={false} />
-                <YAxis yAxisId="left" stroke="#003d9b" fontSize={11} label={{ value: 'Power (kW)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 10, fill: '#003d9b' } }} />
-                <YAxis yAxisId="right" orientation="right" stroke="#059669" fontSize={11} domain={[0, 100]} label={{ value: 'SoC (%)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle', fontSize: 10, fill: '#059669' } }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f8fafc', fontSize: '11px', borderRadius: '8px' }}
-                  formatter={(value: any, name: any) => [
-                    `${value} ${name === 'Battery SoC (%)' ? '%' : 'kW'}`,
-                    name,
-                  ]}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-
-                <Area yAxisId="left" type="monotone" dataKey="solarKw" name="Solar PV Generation (kW)" fill="#f59e0b" stroke="#d97706" fillOpacity={0.25} />
-                <Area yAxisId="left" type="monotone" dataKey="loadKw" name="Load Demand (kW)" fill="#6366f1" stroke="#4f46e5" fillOpacity={0.15} />
-                <Area yAxisId="left" type="monotone" dataKey="gridKw" name="Grid Import (kW)" fill="#0284c7" stroke="#0369a1" fillOpacity={0.2} />
-                <Line yAxisId="right" type="monotone" dataKey="socPercent" name="Battery SoC (%)" stroke="#10b981" strokeWidth={2.5} dot={{ r: 2 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Sizing Calculation Output Dashboard */}
-      <div className="bg-[#0f172a] text-white p-5 rounded-xl border border-slate-700 shadow-md relative overflow-hidden">
-        {/* Recalculating overlay indicator */}
-        {isCalculating && (
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px] flex items-center justify-center z-10">
-            <div className="bg-[#003d9b] text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-bounce">
-              <Cpu className="w-4 h-4 animate-spin" />
-              <span>Debounced Recalculating...</span>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Gauge className="w-5 h-5 text-emerald-400" />
-            <span className="font-bold text-sm uppercase tracking-wider text-slate-200">
-              Optimal Sizing Specifications
-            </span>
-          </div>
-          <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
-            IEEE 1547 &amp; M&amp;E Industrial Standard Compliant
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-            <span className="text-[10px] text-slate-300 font-bold uppercase block">Daily Energy Consumption</span>
-            <div className="text-xl font-black text-amber-400 font-mono mt-1">
-              {calculatedResults.dailyKwh.toFixed(1)} <span className="text-xs font-normal text-slate-200">kWh/day</span>
-            </div>
-            <span className="text-[10px] text-slate-300 block mt-1">Coincident Demand: {calculatedResults.totalConnectedKw.toFixed(1)} kW</span>
-          </div>
-
-          <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-            <span className="text-[10px] text-slate-300 font-bold uppercase block flex items-center gap-1">
-              <Sun className="w-3 h-3 text-sky-400" /> Recommended Solar PV
-            </span>
-            <div className="text-xl font-black text-sky-400 font-mono mt-1">
-              {calculatedResults.recommendedPvKw.toFixed(1)} <span className="text-xs font-normal text-slate-200">kWp</span>
-            </div>
-            <span className="text-[10px] text-slate-300 block mt-1">Array @ {peakSunHours} PSH</span>
-          </div>
-
-          <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-            <span className="text-[10px] text-slate-300 font-bold uppercase block flex items-center gap-1">
-              <Battery className="w-3.5 h-3.5 text-emerald-400" /> Recommended Battery
-            </span>
-            <div className="text-xl font-black text-emerald-400 font-mono mt-1">
-              {calculatedResults.recommendedBatteryKwh.toFixed(1)} <span className="text-xs font-normal text-slate-200">kWh</span>
-            </div>
-            <span className="text-[10px] text-slate-300 block mt-1">{autonomyDays} Days Autonomy @ {batteryDod}% DOD</span>
-          </div>
-
-          <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
-            <span className="text-[10px] text-slate-300 font-bold uppercase block flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-indigo-400" /> Inverter AC Power
-            </span>
-            <div className="text-xl font-black text-indigo-400 font-mono mt-1">
-              {calculatedResults.recommendedInverterKw.toFixed(1)} <span className="text-xs font-normal text-slate-200">kW</span>
-            </div>
-            <span className="text-[10px] text-slate-300 block mt-1">Max DC Fuse: {calculatedResults.recommendedFuseAmps}A</span>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        {onApplySizingToDiagram && (
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-xs text-slate-400 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Apply calculated capacities directly to system diagram nodes</span>
-            </div>
-
-            <button
-              onClick={handleApplyToDiagram}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 shadow-sm ${
-                appliedSuccess
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-[#003d9b] hover:bg-[#0052cc] text-white'
-              }`}
-            >
-              {appliedSuccess ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                  <span>Sizing Applied to Diagram!</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Apply Sizing to Diagram &amp; BIM Inventory</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Engineering Warnings & Feedback Messages */}
-      {calculatedResults.warnings && calculatedResults.warnings.length > 0 && (
-        <div className="space-y-2">
-          {calculatedResults.warnings.map((warn, i) => (
-            <div
-              key={i}
-              className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 shadow-2xs ${
-                warn.type === 'error'
-                  ? 'bg-red-50 border-red-200 text-red-900'
-                  : warn.type === 'warning'
-                  ? 'bg-amber-50 border-amber-200 text-amber-900'
-                  : 'bg-blue-50 border-blue-200 text-blue-900'
-              }`}
-            >
-              {warn.type === 'error' ? (
-                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              ) : warn.type === 'warning' ? (
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              ) : (
-                <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-              )}
-              <div className="leading-relaxed">
-                <span className="font-bold uppercase tracking-wider text-[10px] mr-1">
-                  [{warn.type}]:
+          {/* Stat Cards Grid: 4 Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Stat Card 1: Daily Solar Self-Consumption */}
+            <div className="bg-white p-3.5 rounded-xl border border-amber-200 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-amber-800">
+                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <Sun className="w-3.5 h-3.5 text-amber-600" />
+                  Daily Solar Generation
                 </span>
-                {warn.message}
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono">
+                  {financialSavings.selfConsumptionRatio}% Self-Consumed
+                </span>
+              </div>
+              <div className="mt-2">
+                <div className="text-xl font-black text-amber-950 font-mono">
+                  {financialSavings.dailySolarGenKwh} <span className="text-xs font-bold text-amber-800">kWh/day</span>
+                </div>
+                <div className="text-[11px] text-amber-800 mt-1 font-medium flex items-center justify-between">
+                  <span>Day Shift (08:00-17:00):</span>
+                  <strong className="font-mono text-amber-900">{financialSavings.dayShiftSelfConsumptionRatio}% Ratio</strong>
+                </div>
               </div>
             </div>
-          ))}
+
+            {/* Stat Card 2: Daily Grid Energy Saved */}
+            <div className="bg-white p-3.5 rounded-xl border border-emerald-200 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-emerald-800">
+                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                  Grid Electricity Saved
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 font-mono">
+                  Offsetting Grid
+                </span>
+              </div>
+              <div className="mt-2">
+                <div className="text-xl font-black text-emerald-950 font-mono">
+                  {financialSavings.dailySavedKwh} <span className="text-xs font-bold text-emerald-800">kWh/day</span>
+                </div>
+                <div className="text-[11px] text-emerald-800 mt-1 font-medium flex items-center justify-between">
+                  <span>Grid Dependence:</span>
+                  <strong className="font-mono text-emerald-900">{calculatedResults.emsSimulation.gridDependenceRatio}%</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Stat Card 3: Estimated Financial Savings (USD / MMK) */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-200 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-indigo-800">
+                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <Coins className="w-3.5 h-3.5 text-indigo-600" />
+                  Grid Cost Savings
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 font-mono">
+                  ROI Advisor
+                </span>
+              </div>
+              <div className="mt-2">
+                <div className="text-xl font-black text-indigo-950 font-mono">
+                  ${financialSavings.monthlySavedUsd.toLocaleString()} <span className="text-xs font-bold text-indigo-800">/ mo</span>
+                </div>
+                <div className="text-[11px] text-indigo-900 mt-1 font-bold flex items-center justify-between">
+                  <span>MMK Savings:</span>
+                  <span className="font-mono text-indigo-700">{financialSavings.monthlySavedMmk.toLocaleString()} MMK/mo</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stat Card 4: Configurable Tariff & MMK Exchange Rate */}
+            <div className="bg-[#f8fafc] p-3 rounded-xl border border-[#cbd5e1] shadow-xs space-y-2 text-xs">
+              <span className="text-[10px] font-bold uppercase text-[#003d9b] block tracking-wider flex items-center gap-1">
+                <Sliders className="w-3.5 h-3.5 text-[#003d9b]" />
+                Tariff &amp; Exchange Controls
+              </span>
+              <div className="space-y-1.5 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="tariff-input" className="text-[#434654] font-medium cursor-pointer">Grid Tariff ($/kWh):</label>
+                  <input
+                    id="tariff-input"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="1.00"
+                    value={gridTariffUsd}
+                    onChange={(e) => setGridTariffUsd(Math.max(0.01, parseFloat(e.target.value) || 0.14))}
+                    className="w-16 bg-white border border-[#cbd5e1] rounded px-1.5 py-0.5 text-right font-mono font-bold text-[#0f172a]"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="exchange-input" className="text-[#434654] font-medium cursor-pointer">MMK Rate (MMK/$):</label>
+                  <input
+                    id="exchange-input"
+                    type="number"
+                    step="100"
+                    min="1000"
+                    max="10000"
+                    value={mmkExchangeRate}
+                    onChange={(e) => setMmkExchangeRate(Math.max(1000, parseInt(e.target.value) || 3500))}
+                    className="w-20 bg-white border border-[#cbd5e1] rounded px-1.5 py-0.5 text-right font-mono font-bold text-[#0f172a]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Chart Container */}
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d6] shadow-sm space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-[#003d9b]" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#0f172a]">
+                  24-Hour Solis PV vs Factory Power Load &amp; Battery SoC Curve
+                </h4>
+              </div>
+
+              {/* Legend Badges */}
+              <div className="flex items-center gap-3 text-[10px] font-bold flex-wrap">
+                <span className="flex items-center gap-1 text-amber-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                  Solis PV Gen (Peak 124.8 kW)
+                </span>
+                <span className="flex items-center gap-1 text-[#003d9b]">
+                  <span className="w-2.5 h-0.5 bg-[#003d9b] inline-block" />
+                  Factory Power Load (kW)
+                </span>
+                <span className="flex items-center gap-1 text-emerald-700">
+                  <span className="w-2.5 h-2.5 rounded bg-emerald-500/40 border border-emerald-600 inline-block" />
+                  Solar Surplus (PV &gt; Load)
+                </span>
+                <span className="flex items-center gap-1 text-orange-700">
+                  <span className="w-2.5 h-2.5 rounded bg-orange-500/40 border border-orange-600 inline-block" />
+                  Deficit Area (PV &lt; Load)
+                </span>
+                <span className="flex items-center gap-1 text-emerald-800">
+                  <span className="w-2.5 h-0.5 border-t-2 border-dashed border-emerald-600 inline-block" />
+                  Battery SoC (%)
+                </span>
+              </div>
+            </div>
+
+            {/* Recharts Composed Chart */}
+            <div className="h-96 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartProfileData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis
+                    dataKey="timeLabel"
+                    tick={{ fontSize: 10, fill: '#475569', fontWeight: 600 }}
+                  />
+                  <YAxis
+                    yAxisId="power"
+                    orientation="left"
+                    unit=" kW"
+                    tick={{ fontSize: 10, fill: '#475569', fontWeight: 600 }}
+                  />
+                  <YAxis
+                    yAxisId="soc"
+                    orientation="right"
+                    domain={[0, 100]}
+                    unit="%"
+                    tick={{ fontSize: 10, fill: '#059669', fontWeight: 700 }}
+                  />
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-[#0f172a] text-slate-100 border border-[#334155] p-3 rounded-xl shadow-xl text-xs space-y-1 font-sans min-w-52">
+                            <div className="font-bold text-amber-400 border-b border-[#334155] pb-1.5 flex justify-between items-center">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-amber-400" /> Time: {data.timeLabel}
+                              </span>
+                              <span className="text-[10px] font-black uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                {data.stage} Priority
+                              </span>
+                            </div>
+                            <div className="pt-1 space-y-1.5 text-[11px]">
+                              <div className="flex justify-between items-center">
+                                <span className="text-amber-300 flex items-center gap-1 font-medium">
+                                  <Sun className="w-3 h-3 text-amber-400" /> Solis PV Gen:
+                                </span>
+                                <strong className="font-mono text-amber-300 font-black">{data.solarKw} kW</strong>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sky-300 flex items-center gap-1 font-medium">
+                                  <Zap className="w-3 h-3 text-sky-400" /> Factory Load:
+                                </span>
+                                <strong className="font-mono text-sky-300 font-black">{data.loadKw} kW</strong>
+                              </div>
+                              {data.solarSurplusKw > 0 && (
+                                <div className="flex justify-between items-center text-emerald-400 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800">
+                                  <span>Solar Surplus (PV &gt; Load):</span>
+                                  <strong className="font-mono">+{data.solarSurplusKw} kW</strong>
+                                </div>
+                              )}
+                              {data.deficitKw > 0 && (
+                                <div className="flex justify-between items-center text-orange-400 font-bold bg-orange-950/60 px-1.5 py-0.5 rounded border border-orange-800">
+                                  <span>Power Deficit (PV &lt; Load):</span>
+                                  <strong className="font-mono">-{data.deficitKw} kW</strong>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-center pt-1 border-t border-slate-800">
+                                <span className="text-emerald-300 flex items-center gap-1 font-medium">
+                                  <Battery className="w-3 h-3 text-emerald-400" /> Battery SoC:
+                                </span>
+                                <strong className="font-mono text-emerald-300 font-black">{data.socPercent}%</strong>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sky-400 flex items-center gap-1 font-medium">
+                                  <Building2 className="w-3 h-3 text-sky-400" /> Grid Import:
+                                </span>
+                                <strong className="font-mono text-sky-400 font-black">{data.gridKw} kW</strong>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+
+                  {/* 1. Base PV Generation Area */}
+                  <Area
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="solarKw"
+                    name="Solis PV Generation (kW)"
+                    fill="#f59e0b"
+                    stroke="#d97706"
+                    strokeWidth={1.5}
+                    fillOpacity={0.2}
+                  />
+
+                  {/* 2. Solar Surplus Highlight Area (PV > Load) in Green */}
+                  <Area
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="solarSurplusKw"
+                    name="Solar Surplus Area (Green)"
+                    fill="#10b981"
+                    stroke="#059669"
+                    strokeWidth={1.5}
+                    fillOpacity={0.4}
+                  />
+
+                  {/* 3. Power Deficit Highlight Area (PV < Load) in Orange/Red */}
+                  <Area
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="deficitKw"
+                    name="Battery/Grid Deficit Area (Orange)"
+                    fill="#f97316"
+                    stroke="#ea580c"
+                    strokeWidth={1.5}
+                    fillOpacity={0.25}
+                  />
+
+                  {/* 4. Factory Load Line in Deep Navy */}
+                  <Line
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="loadKw"
+                    name="Factory Power Load (kW)"
+                    stroke="#003d9b"
+                    strokeWidth={3}
+                    dot={{ r: 2, fill: '#003d9b' }}
+                  />
+
+                  {/* 5. Battery SoC Line on Right Axis */}
+                  <Line
+                    yAxisId="soc"
+                    type="monotone"
+                    dataKey="socPercent"
+                    name="Battery SoC (%)"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+
+                  {/* 6. Grid Import Area */}
+                  <Area
+                    yAxisId="power"
+                    type="monotone"
+                    dataKey="gridKw"
+                    name="Grid Utility Import (kW)"
+                    fill="#0284c7"
+                    stroke="#0369a1"
+                    strokeWidth={1}
+                    fillOpacity={0.15}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Phase Breakdown Explanatory Callouts */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            {/* Phase 1: Solar Surplus Phase */}
+            <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl space-y-1">
+              <span className="font-bold text-emerald-900 flex items-center gap-1">
+                <Sun className="w-3.5 h-3.5 text-emerald-600" />
+                1. Solar Surplus Phase (09:00 - 15:00)
+              </span>
+              <p className="text-[11px] text-emerald-800 leading-relaxed">
+                Solis PV generation exceeds factory demand (P<sub>Solar</sub> &gt; P<sub>Load</sub>). High surplus power directly charges battery storage up to 100% SoC while supplying day shift production.
+              </p>
+            </div>
+
+            {/* Phase 2: Battery Discharge Phase */}
+            <div className="bg-orange-50 border border-orange-200 p-3 rounded-xl space-y-1">
+              <span className="font-bold text-orange-900 flex items-center gap-1">
+                <Battery className="w-3.5 h-3.5 text-orange-600" />
+                2. Deficit / Battery Phase (17:00 - 01:00)
+              </span>
+              <p className="text-[11px] text-orange-800 leading-relaxed">
+                PV generation decreases at dusk. Stored battery energy discharges to meet night shift production loads down to min SoC limit ({100 - batteryDod}%), shielding the factory from peak utility tariffs.
+              </p>
+            </div>
+
+            {/* Phase 3: Grid Backup Phase */}
+            <div className="bg-sky-50 border border-sky-200 p-3 rounded-xl space-y-1">
+              <span className="font-bold text-sky-900 flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-sky-600" />
+                3. Grid Backup Phase (01:00 - 08:00)
+              </span>
+              <p className="text-[11px] text-sky-800 leading-relaxed">
+                When battery reaches minimum reserve SoC, Solis hybrid inverter seamlessly switches to Grid backup power to maintain 24/7 continuous server room &amp; essential safety lighting loads.
+              </p>
+            </div>
+          </div>
         </div>
       )}
-    </article>
+    </div>
   );
 };
